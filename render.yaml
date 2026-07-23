@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: lv-wedding-planner
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: LV_ENVIRONMENT
+        value: production
+      - key: LV_DEBUG
+        value: "false"
+      - key: LV_SECRET_KEY
+        generateValue: true
+      - key: LV_SESSION_HTTPS_ONLY
+        value: "true"
+      - key: LV_ALLOWED_HOSTS
+        value: "*.onrender.com"
+      - key: LV_LOG_LEVEL
+        value: INFO
+      - key: LV_UPLOADS_DIR
+        value: uploads
+      - key: LV_BACKUPS_DIR
+        value: backups
+      - key: LV_DATABASE_URL
+        sync: false

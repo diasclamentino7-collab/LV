@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#FAF8F6">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegação principal">
+        <a class="brand" href="#" aria-label="LV Wedding Planner, página inicial">
+          <span class="brand-mark">LV</span>
+          <span class="brand-name">Wedding<br><em>Planner</em></span>
+        </a>
+
+        <nav class="nav-list">
+          <a class="nav-item {% if current_section == 'dashboard' %}is-active{% endif %}" href="/dashboard"><span class="nav-icon">⌂</span>Dashboard</a>
+          <p class="nav-label">Planeamento</p>
+          <a class="nav-item {% if current_section == 'checklist' %}is-active{% endif %}" href="/checklist"><span class="nav-icon">✓</span>Checklist</a>
+          <a class="nav-item {% if current_section == 'timeline' %}is-active{% endif %}" href="/timeline"><span class="nav-icon">◌</span>Cronograma</a>
+          <a class="nav-item {% if current_section == 'budget' %}is-active{% endif %}" href="/budget"><span class="nav-icon">◈</span>Orçamento</a>
+          <a class="nav-item {% if current_section == 'vendors' %}is-active{% endif %}" href="/vendors"><span class="nav-icon">✦</span>Fornecedores</a>
+          <a class="nav-item {% if current_section == 'guests' %}is-active{% endif %}" href="/guests"><span class="nav-icon">◫</span>Convidados</a>
+          <a class="nav-item {% if current_section == 'table-plan' %}is-active{% endif %}" href="/table-plan"><span class="nav-icon">⌘</span>Plano de Mesas</a>
+          <p class="nav-label">O grande dia</p>
+          <a class="nav-item {% if current_section == 'ceremony' %}is-active{% endif %}" href="/ceremony"><span class="nav-icon">♡</span>Cerimónia</a>
+          <a class="nav-item {% if current_section == 'reception' %}is-active{% endif %}" href="/reception"><span class="nav-icon">✧</span>Receção</a>
+          <a class="nav-item {% if current_section == 'kingdom-hall' %}is-active{% endif %}" href="/kingdom-hall"><span class="nav-icon">⌂</span>Salão do Reino</a>
+          <a class="nav-item {% if current_section == 'legal-process' %}is-active{% endif %}" href="/legal-process"><span class="nav-icon">§</span>Processo Legal</a>
+          <p class="nav-label">O vosso mundo</p>
+          <a class="nav-item {% if current_section == 'attire' %}is-active{% endif %}" href="/attire"><span class="nav-icon">◇</span>Roupa</a>
+          <a class="nav-item {% if current_section == 'honeymoon' %}is-active{% endif %}" href="/honeymoon"><span class="nav-icon">☼</span>Lua de Mel</a>
+          <a class="nav-item {% if current_section == 'home' %}is-active{% endif %}" href="/home"><span class="nav-icon">⌂</span>Casa</a>
+          <a class="nav-item {% if current_section == 'gifts' %}is-active{% endif %}" href="/gifts"><span class="nav-icon">♢</span>Presentes</a>
+          <a class="nav-item {% if current_section == 'documents' %}is-active{% endif %}" href="/documents"><span class="nav-icon">▤</span>Documentos</a>
+          <a class="nav-item {% if current_section == 'communication' %}is-active{% endif %}" href="/communication"><span class="nav-icon">✎</span>Comunicação</a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <a class="nav-item {% if current_section == 'settings' %}is-active{% endif %}" href="/settings"><span class="nav-icon">⚙</span>Configurações</a>
+          <div class="profile-card">
+            <span class="avatar">LV</span>
+            <span><strong>Leonor &amp; Vasco</strong><small>O nosso espaço</small></span>
+            <span class="more">•••</span>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-frame">
+        <header class="header">
+          <button class="menu-button" aria-label="Abrir menu">☰</button>
+          <div class="breadcrumb"><span>LV</span><i>/</i><strong>Visão geral</strong></div>
+          <div class="header-actions">
+            <button class="icon-button" aria-label="Pesquisar">⌕</button>
+            <button class="icon-button notification" aria-label="Notificações">♧</button>
+            <button class="header-avatar" aria-label="Perfil de Leonor e Vasco">LV</button>
+          </div>
+        </header>
+        <main class="content">{% block content %}{% endblock %}</main>
+      </div>
+    </div>
+    <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js");</script>
+  </body>
+</html>

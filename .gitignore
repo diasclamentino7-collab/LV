@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+.vscode/*.log
+.env
+data/*.db
+data/*.sqlite*
+uploads/*
+!uploads/.gitkeep
+backups/*
+!backups/.gitkeep
