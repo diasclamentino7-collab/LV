@@ -1,0 +1,37 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    volumes: ["uploads:/app/uploads", "backups:/app/backups"]
+    depends_on:
+      db: { condition: service_healthy }
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env.production
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web]
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lv_wedding_planner}
+      POSTGRES_USER: ${POSTGRES_USER:-lv_wedding}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lv_wedding -d lv_wedding_planner"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  postgres_data:
+  uploads:
+  backups:
+  caddy_data:
+  caddy_config:

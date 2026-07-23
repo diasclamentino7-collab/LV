@@ -1,0 +1,10 @@
+{
+  "name": "LV – Wedding Planner",
+  "short_name": "LV Wedding",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FAF8F6",
+  "theme_color": "#D88BA7",
+  "lang": "pt-PT",
+  "icons": [{"src": "/static/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_components.html" import card, progress %}
+
+{% block title %}Visão geral · {{ app_name }}{% endblock %}
+{% block content %}
+  <section class="page-intro">
+    <div><p class="eyebrow">O vosso dia, à vossa maneira</p><h1>Bom dia, Leonor <span>♡</span></h1><p class="intro-copy">Tudo o que precisam para criar um casamento memorável, num só lugar.</p></div>
+    <button class="primary-button">+ Adicionar ao plano</button>
+  </section>
+
+  <section class="countdown card">
+    <div class="countdown-copy"><p class="eyebrow">O grande dia</p><h2>Estamos quase lá.</h2><p>14 de setembro de 2026 · Quinta da Pacheca</p></div>
+    <div class="countdown-numbers"><div><strong>416</strong><span>dias</span></div><i></i><div><strong>09</strong><span>meses</span></div><i></i><div><strong>23</strong><span>horas</span></div></div>
+    <span class="flower-mark" aria-hidden="true">✽</span>
+  </section>
+
+  <section class="metric-grid" aria-label="Resumo do casamento">
+    <article class="metric-card"><span class="metric-icon blush">♡</span><div><p>Convidados</p><strong>{{ stats.guests }} <small>registados</small></strong></div><a class="metric-arrow" href="/guests">↗</a></article>
+    <article class="metric-card"><span class="metric-icon gold">◈</span><div><p>Orçamento</p><strong>{{ stats.categories }} <small>categorias</small></strong></div><a class="metric-arrow" href="/budget">↗</a></article>
+    <article class="metric-card"><span class="metric-icon sand">✓</span><div><p>Checklist</p><strong>{{ stats.tasks }} <small>tarefas</small></strong></div><a class="metric-arrow" href="/checklist">↗</a></article>
+  </section>
+
+  <section class="dashboard-grid">
+    {% call card('Próximos passos', 'Pequenas decisões, grandes memórias.', 'next-steps') %}
+      {% if activities %}<div class="activity-list">{% for activity in activities %}<article><span class="empty-icon">✦</span><p><strong>{{ activity.description }}</strong><small>{{ activity.occurred_at.strftime('%d/%m/%Y %H:%M') }}</small></p></article>{% endfor %}</div>{% else %}<div class="empty-state"><span class="empty-icon">✦</span><h3>Ainda não há atividade.</h3><p>As ações guardadas pelos dois utilizadores vão aparecer aqui.</p><a class="text-button" href="/checklist">Criar primeira tarefa <span>→</span></a></div>{% endif %}
+    {% endcall %}
+
+    {% call card('Visão do orçamento', 'Acompanhem cada escolha com leveza.', 'budget-card') %}
+      <div class="budget-total"><span>Total planeado</span><strong>€0,00</strong><small>de €0,00</small></div>
+      {{ progress('Ainda por atribuir', '€0,00', 0, 'gold') }}
+      <a class="card-link" href="#">Ver orçamento <span>→</span></a>
+    {% endcall %}
+  </section>
+
+  {% call card('Inspiração para o vosso dia', 'Guardem ideias que contam a vossa história.', 'inspiration-card') %}
+    <div class="inspiration-layout"><div class="inspiration-art"><span>✿</span><span>⌇</span><span>♡</span></div><div><h3>O vosso moodboard espera por vocês</h3><p>Criem uma coleção de cores, detalhes e momentos que vão tornar este dia só vosso.</p><button class="secondary-button">Começar a explorar</button></div></div>
+  {% endcall %}
+{% endblock %}

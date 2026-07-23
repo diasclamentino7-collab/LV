@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_components.html" import card %}
+
+{% block title %}{{ page.title }} · {{ app_name }}{% endblock %}
+{% block content %}
+  <section class="page-intro workspace-intro">
+    <div>
+      <p class="eyebrow">{{ page.eyebrow }}</p>
+      <div class="title-with-icon"><span class="section-symbol">{{ page.icon }}</span><h1>{{ page.title }}</h1></div>
+      <p class="intro-copy">{{ page.description }}</p>
+    </div>
+    <button class="primary-button">+ Adicionar</button>
+  </section>
+
+  {% call card('', '', 'module-placeholder') %}
+    <div class="module-placeholder-content">
+      <div class="placeholder-art"><span>{{ page.icon }}</span></div>
+      <p class="eyebrow">Em preparação</p>
+      <h2>O vosso espaço de {{ page.title|lower }} começa aqui.</h2>
+      <p>Esta área está pronta para receber os detalhes, decisões e memórias que quiserem guardar.</p>
+      <div class="placeholder-lines"><i></i><i></i><i></i></div>
+    </div>
+  {% endcall %}
+{% endblock %}

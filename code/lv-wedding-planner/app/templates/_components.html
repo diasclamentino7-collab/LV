@@ -1,0 +1,10 @@
+{% macro card(title='', subtitle='', class_name='') %}
+<section class="card {{ class_name }}">
+  {% if title %}<div class="card-heading"><div><h2>{{ title }}</h2>{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}</div><button class="quiet-button" aria-label="Mais opções">•••</button></div>{% endif %}
+  {{ caller() }}
+</section>
+{% endmacro %}
+
+{% macro progress(label, value, percent, color='pink') %}
+<div class="progress-row"><div class="progress-label"><span>{{ label }}</span><strong>{{ value }}</strong></div><div class="progress-track"><span class="progress-fill {{ color }}" style="width: {{ percent }}%"></span></div></div>
+{% endmacro %}
