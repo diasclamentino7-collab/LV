@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Editar' if record else 'Adicionar' }} {{ module.title }} · {{ app_name }}{% endblock %}
+{% block title %}{{ 'Editar' if record else 'Adicionar' }} {{ module.title }} · {{ display_app_name|default(app_name) }}{% endblock %}
 {% block content %}
 <section class="page-intro">
   <div><p class="eyebrow">{{ module.title }}</p><h1>{{ 'Editar registo' if record else 'Novo registo' }}</h1><p class="intro-copy">Preencham os dados e guardem quando estiverem prontos.</p></div>
@@ -7,8 +7,11 @@
 </section>
 {% if request.query_params.get('error') %}<div class="form-error">Não foi possível guardar. Verifiquem os campos e confirmem que não existe outro registo com o mesmo nome.</div>{% endif %}
 <form method="post" class="card form-grid record-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   {% for field in module.fields %}
   {% set value = record|attr(field.name) if record else '' %}
+  {% if not record and ui_settings is defined and field.name == 'assignee' %}{% set value = ui_settings.default_assignee %}{% endif %}
+  {% if not record and ui_settings is defined and field.name == 'priority' %}{% set value = ui_settings.default_task_priority %}{% endif %}
   {% if value and field.kind == 'datetime-local' %}{% set value = value.strftime('%Y-%m-%dT%H:%M') %}{% endif %}
   <label>{{ field.label }}
     {% if field.kind == 'textarea' %}<textarea name="{{ field.name }}">{{ value or '' }}</textarea>

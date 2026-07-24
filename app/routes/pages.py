@@ -7,21 +7,22 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import Select, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.config import PROJECT_ROOT, get_settings
+from app.core.config import get_settings
+from app.core.templating import templates
 from app.db.session import SessionLocal
 from app.models.core import WorkspaceRecord
 from app.models.planning import BudgetCategory, Expense, Guest, LegalDocument, Payment, Task, Vendor
 from app.services.activity import record_activity
+from app.services.auth_session import authenticated_user
+from app.services.csrf import valid_csrf_token
 
 router = APIRouter()
-templates = Jinja2Templates(directory=PROJECT_ROOT / "app" / "templates")
 
 
 @dataclass(frozen=True)
@@ -237,8 +238,9 @@ def logged_user_id(request: Request) -> int | None:
 
 
 def require_login(request: Request) -> RedirectResponse | None:
-    if logged_user_id(request) is None:
-        return RedirectResponse("/login", status_code=303)
+    with SessionLocal() as db:
+        if authenticated_user(db, request) is None:
+            return RedirectResponse("/login", status_code=303)
     return None
 
 
@@ -335,7 +337,7 @@ def record_label(record: Any) -> str:
     if label:
         return str(label)
     if isinstance(record, Payment):
-        return f"Pagamento €{record.amount}"
+        return f"Pagamento {record.amount}"
     return f"Registo #{record.id}"
 
 
@@ -406,6 +408,8 @@ async def create_record(request: Request, slug: str) -> RedirectResponse:
     if spec is None:
         return RedirectResponse("/dashboard", status_code=303)
     values = {key: str(value) for key, value in (await request.form()).items()}
+    if not valid_csrf_token(request, values.pop("csrf_token", "")):
+        return RedirectResponse(f"/{slug}/new?error=csrf", status_code=303)
     with SessionLocal() as db:
         try:
             record = spec.model() if spec.model else WorkspaceRecord(module=spec.slug)
@@ -462,6 +466,8 @@ async def update_record(request: Request, slug: str, record_id: int) -> Redirect
     if spec is None:
         return RedirectResponse("/dashboard", status_code=303)
     values = {key: str(value) for key, value in (await request.form()).items()}
+    if not valid_csrf_token(request, values.pop("csrf_token", "")):
+        return RedirectResponse(f"/{slug}/{record_id}/edit?error=csrf", status_code=303)
     with SessionLocal() as db:
         record = record_for(spec, db, record_id)
         if record is not None:
@@ -483,9 +489,16 @@ async def update_record(request: Request, slug: str, record_id: int) -> Redirect
 
 
 @router.post("/{slug}/{record_id}/archive", include_in_schema=False)
-def archive_record(request: Request, slug: str, record_id: int) -> RedirectResponse:
+def archive_record(
+    request: Request,
+    slug: str,
+    record_id: int,
+    csrf_token: str = Form(""),
+) -> RedirectResponse:
     if redirect := require_login(request):
         return redirect
+    if not valid_csrf_token(request, csrf_token):
+        return RedirectResponse(f"/{slug}?error=csrf", status_code=303)
     spec = MODULES.get(slug)
     if spec is not None:
         with SessionLocal() as db:
@@ -505,9 +518,16 @@ def archive_record(request: Request, slug: str, record_id: int) -> RedirectRespo
 
 
 @router.post("/{slug}/{record_id}/restore", include_in_schema=False)
-def restore_record(request: Request, slug: str, record_id: int) -> RedirectResponse:
+def restore_record(
+    request: Request,
+    slug: str,
+    record_id: int,
+    csrf_token: str = Form(""),
+) -> RedirectResponse:
     if redirect := require_login(request):
         return redirect
+    if not valid_csrf_token(request, csrf_token):
+        return RedirectResponse(f"/{slug}?error=csrf&archived=true", status_code=303)
     spec = MODULES.get(slug)
     if spec is not None:
         with SessionLocal() as db:

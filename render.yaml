@@ -12,6 +12,8 @@ services:
         value: "false"
       - key: LV_SECRET_KEY
         generateValue: true
+      - key: LV_SETUP_TOKEN
+        generateValue: true
       - key: LV_SESSION_HTTPS_ONLY
         value: "true"
       - key: LV_ALLOWED_HOSTS

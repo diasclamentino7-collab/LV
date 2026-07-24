@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico de atividade · {{ display_app_name|default(app_name) }}{% endblock %}
+
+{% block content %}
+  <section class="page-intro">
+    <div>
+      <p class="eyebrow">Transparência partilhada</p>
+      <h1>Histórico de atividade</h1>
+      <p class="intro-copy">Vejam o que foi alterado, por quem e quando. Os registos são apenas de leitura.</p>
+    </div>
+    <a class="secondary-button" href="/communication">Abrir Comunicação</a>
+  </section>
+
+  <section class="card activity-history-card">
+    <form class="activity-filters" method="get" action="/activity">
+      <label>
+        <span>Utilizador</span>
+        <select name="user_id">
+          <option value="">Todos</option>
+          {% for user in users %}
+            <option value="{{ user.id }}" {% if filters.user_id == user.id %}selected{% endif %}>{{ user.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        <span>Módulo</span>
+        <select name="module">
+          <option value="">Todos</option>
+          {% for item in modules %}
+            <option value="{{ item }}" {% if filters.module == item %}selected{% endif %}>{{ item|replace('-', ' ')|title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        <span>Ação</span>
+        <select name="action_type">
+          <option value="">Todas</option>
+          {% for item in actions %}
+            <option value="{{ item }}" {% if filters.action_type == item %}selected{% endif %}>{{ item|title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        <span>Desde</span>
+        <input type="date" name="date_from" value="{{ filters.date_from.isoformat() if filters.date_from else '' }}">
+      </label>
+      <label>
+        <span>Até</span>
+        <input type="date" name="date_to" value="{{ filters.date_to.isoformat() if filters.date_to else '' }}">
+      </label>
+      <div class="activity-filter-actions">
+        <button class="primary-button" type="submit">Aplicar filtros</button>
+        <a class="text-button" href="/activity">Limpar</a>
+      </div>
+    </form>
+
+    {% if activities %}
+      <div class="activity-table-wrap">
+        <table class="activity-table">
+          <thead>
+            <tr>
+              <th>Data e hora</th>
+              <th>Utilizador</th>
+              <th>Módulo</th>
+              <th>Ação</th>
+              <th>Descrição</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for activity in activities %}
+              <tr>
+                <td data-label="Data">{{ activity.occurred_at.strftime('%d/%m/%Y · %H:%M') }}</td>
+                <td data-label="Utilizador"><strong>{{ activity.user_name }}</strong></td>
+                <td data-label="Módulo"><span class="activity-module">{{ activity.module|replace('-', ' ') }}</span></td>
+                <td data-label="Ação">{{ activity.action_type }}</td>
+                <td data-label="Descrição">{{ activity.description }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="activity-limit-note">São apresentados até 250 registos por pesquisa.</p>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-icon">✦</span>
+        <h3>Não existem atividades para estes filtros.</h3>
+        <p>Limpem os filtros ou façam uma alteração no planeamento.</p>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

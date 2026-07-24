@@ -1,6 +1,6 @@
 """Single financial source of truth used by every read model."""
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -9,11 +9,16 @@ from app.models.planning import BudgetCategory, Expense, Payment
 
 
 def _decimal(value: object) -> Decimal:
-    return Decimal(value or 0)
+    try:
+        parsed = Decimal(value or 0)
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal("0")
+    return parsed if parsed.is_finite() and parsed >= 0 else Decimal("0")
 
 
 def financial_summary(db: Session, total_budget: Decimal) -> dict[str, Decimal | int]:
     """Build the canonical financial snapshot from persisted records."""
+    total_budget = _decimal(total_budget)
     paid = _decimal(
         db.scalar(
             select(func.coalesce(func.sum(Payment.amount), 0)).where(

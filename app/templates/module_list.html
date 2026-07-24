@@ -1,12 +1,25 @@
 {% extends "base.html" %}
-{% block title %}{{ module.title }} · {{ app_name }}{% endblock %}
+{% block title %}{{ module.title }} · {{ display_app_name|default(app_name) }}{% endblock %}
 {% block content %}
 <section class="page-intro"><div><p class="eyebrow">Gestão do casamento</p><h1>{{ module.title }}{% if show_archived %} eliminados{% endif %}</h1><p class="intro-copy">{{ module.description }}</p></div><div class="page-actions"><a class="secondary-button" href="/{{ module.slug }}?archived={{ 'false' if show_archived else 'true' }}">{{ 'Ver ativos' if show_archived else 'Ver eliminados' }}</a>{% if not show_archived %}<a class="primary-button" href="/{{ module.slug }}/new">+ Novo</a>{% endif %}</div></section>
+{% if module.slug in ['kingdom-hall', 'reception'] and ui_settings is defined %}
+  {% set venue_name = ui_settings.ceremony_venue if module.slug == 'kingdom-hall' else ui_settings.reception_venue %}
+  <section class="venue-summary" aria-label="Local principal">
+    <span aria-hidden="true">{{ '♡' if module.slug == 'kingdom-hall' else '✧' }}</span>
+    <div>
+      <small>Local principal</small>
+      <strong>{{ venue_name or 'Ainda por definir' }}</strong>
+      <p>{{ ui_settings.wedding_city or 'Zona por definir' }} · usem os registos abaixo para URL, contacto, visitas e decisões.</p>
+    </div>
+    <a class="secondary-button" href="/settings#event">Alterar local</a>
+  </section>
+{% endif %}
 {% if message %}<div class="success-banner">{% if message == 'created' %}Registo criado com sucesso.{% elif message == 'updated' %}Alterações guardadas.{% elif message == 'restored' %}Registo recuperado com sucesso.{% else %}Registo eliminado da lista. Os dados continuam preservados.{% endif %}</div>{% endif %}
+{% if error %}<div class="form-error">A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.</div>{% endif %}
 <section class="card module-records">
   <form class="search-bar" method="get"><input name="q" value="{{ search }}" placeholder="Pesquisar {{ module.title|lower }}"><button class="secondary-button">Pesquisar</button></form>
   {% if records %}<div class="record-list">{% for record in records %}
-  <article class="record-row"><div><h2>{{ record_labels[record.id] }}</h2><p>{% if record.planned_limit is defined %}Limite: €{{ '%.2f'|format(record.planned_limit) }} · {% endif %}{% if record.amount is defined %}Valor: €{{ '%.2f'|format(record.amount) }} · {% endif %}{% if record.status is defined %}{{ record.status }} · {% endif %}Atualizado em {{ record.updated_at.strftime('%d/%m/%Y %H:%M') if record.updated_at else '—' }}</p></div><div class="record-actions">{% if show_archived %}<form method="post" action="/{{ module.slug }}/{{ record.id }}/restore"><button>Recuperar</button></form>{% else %}<a href="/{{ module.slug }}/{{ record.id }}/edit">Editar</a><form method="post" action="/{{ module.slug }}/{{ record.id }}/archive" onsubmit="return confirm('Eliminar este registo da lista? Os dados serão preservados e poderão ser recuperados.')"><button>Eliminar</button></form>{% endif %}</div></article>
+  <article class="record-row"><div><h2>{{ record_labels[record.id] }}</h2><p>{% if record.planned_limit is defined %}Limite: {{ currency_symbol }}{{ '%.2f'|format(record.planned_limit) }} · {% endif %}{% if record.amount is defined %}Valor: {{ currency_symbol }}{{ '%.2f'|format(record.amount) }} · {% endif %}{% if record.status is defined %}{{ record.status }} · {% endif %}Atualizado em {{ record.updated_at.strftime('%d/%m/%Y %H:%M') if record.updated_at else '—' }}</p></div><div class="record-actions">{% if show_archived %}<form method="post" action="/{{ module.slug }}/{{ record.id }}/restore"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Recuperar</button></form>{% else %}<a href="/{{ module.slug }}/{{ record.id }}/edit">Editar</a><form method="post" action="/{{ module.slug }}/{{ record.id }}/archive" onsubmit="return confirm('Eliminar este registo da lista? Os dados serão preservados e poderão ser recuperados.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Eliminar</button></form>{% endif %}</div></article>
   {% endfor %}</div>{% else %}<div class="empty-state"><span class="empty-icon">✦</span><h3>Ainda não há registos.</h3><p>Adicionem o primeiro item; ficará guardado imediatamente na base de dados.</p></div>{% endif %}
 </section>
 {% endblock %}

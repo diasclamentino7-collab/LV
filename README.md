@@ -1,8 +1,8 @@
 # LV – Wedding Planner
 
-Fundação profissional e modular para uma aplicação de organização de
-casamentos. Esta primeira entrega não inclui funcionalidades de negócio: deixa
-uma base segura para as acrescentar ao longo dos anos.
+Aplicação profissional e modular para planear um casamento em conjunto. Inclui
+autenticação, dashboard, CRUD persistente, orçamento, convidados, tarefas,
+atividade, comunicação, moodboard, configurações avançadas e instalação PWA.
 
 ## Arquitetura
 
@@ -46,10 +46,7 @@ Set-Location C:\Users\diasc\code\lv-wedding-planner
 Abra `http://127.0.0.1:8000`; OpenAPI fica em `/docs` e a verificação de estado
 em `/api/health`.
 
-## Áreas preparadas
-
-As áreas de interface já possuem rotas, mas não implementam operações nem
-persistência nesta fase:
+## Áreas da aplicação
 
 | Área | Rota |
 | --- | --- |
@@ -60,15 +57,52 @@ persistência nesta fase:
 | Orçamento | `/budget` |
 | Cronograma | `/timeline` |
 | Fornecedores | `/vendors` |
-| Cerimónia | `/ceremony` |
-| Receção | `/reception` |
+| Pagamentos | `/payments` |
+| Despesas | `/expenses` |
+| Salão do Reino · Cerimónia | `/kingdom-hall` |
+| Copo de Água · Festa | `/reception` |
 | Processo Legal | `/legal-process` |
 | Roupa | `/attire` |
 | Lua de Mel | `/honeymoon` |
 | Casa | `/home` |
 | Presentes | `/gifts` |
 | Documentos | `/documents` |
+| Moodboard | `/moodboard` |
+| Comunicação | `/communication` |
+| Histórico de atividade | `/activity` |
 | Configurações | `/settings` |
+
+As rotas históricas `/ceremony` e `/quinta` são mantidas por compatibilidade e
+encaminham para os módulos consolidados sem alterar ou apagar os registos
+existentes.
+
+## Configurações avançadas
+
+Em `/settings` é possível gerir, por secções independentes:
+
+- identidade do projeto, nomes do casal e logótipo por URL;
+- data e hora, fuso horário, estilo, locais e objetivo de convidados;
+- orçamento, moeda e percentagem de alerta;
+- cores aplicadas em toda a interface;
+- responsável e prioridade predefinidos, lembretes e blocos do dashboard;
+- colaboradores, alteração de password, instalação PWA e exportação JSON;
+- proteção contra alterações concorrentes, aviso de moeda sem conversão e
+  confirmação antes de abandonar formulários por guardar.
+
+Cada gravação fica registada no histórico de atividade. Um controlo de versão
+impede que um formulário antigo substitua silenciosamente alterações feitas
+pela outra pessoa. A exportação em `/settings/export` inclui os dados de
+planeamento, mas exclui todos os dados internos de autenticação.
+
+O histórico em `/activity` identifica utilizador, data/hora, módulo, ação e
+descrição, com filtros combináveis. É apenas de leitura e mostra até 250
+resultados por pesquisa.
+
+Todos os formulários que alteram dados utilizam um token CSRF associado à
+sessão. As passwords são guardadas apenas como hashes e as respostas incluem
+políticas de segurança para conteúdo, frames, permissões e HTTPS.
+Cinco tentativas de login sem sucesso bloqueiam temporariamente a conta. Alterar
+a password revoga também as sessões anteriores, incluindo noutros dispositivos.
 
 ## Migrações e preservação de dados
 
@@ -90,6 +124,10 @@ destrutiva:
 ```powershell
 python scripts/check_migrations.py
 ```
+
+O verificador recusa remoções de tabelas/colunas, renomeações destrutivas e SQL
+com `DROP`, `TRUNCATE` ou `DELETE FROM`. As migrações de produção são sempre
+aditivas e os `downgrade` não apagam dados.
 
 As regras completas de retenção de dados, compatibilidade e independência dos
 módulos estão em [CONTRIBUTING.md](CONTRIBUTING.md). Em resumo: expandir o
@@ -120,6 +158,9 @@ substitua todas as credenciais e execute
 obtém e renova HTTPS automaticamente quando o domínio configurado em
 `CADDY_DOMAIN` já aponta para o servidor. Defina também
 `LV_SESSION_HTTPS_ONLY=true` e os domínios em `LV_ALLOWED_HOSTS`.
+Em produção, a aplicação recusa arrancar com SQLite, uma chave de sessão fraca,
+cookies sem HTTPS ou um `LV_SETUP_TOKEN` com menos de 32 caracteres. Isto evita
+publicar acidentalmente uma instalação insegura.
 
 Para SQLite local, crie um backup agendado com:
 
@@ -139,8 +180,8 @@ gratuitos têm limites e o serviço web gratuito pode demorar alguns segundos a
 acordar depois de inatividade.
 
 1. Crie gratuitamente uma base em [Neon](https://neon.com/) e copie a
-   connection string do painel **Connect**. Converta o início de
-   `postgresql://` para `postgresql+psycopg://`.
+   connection string do painel **Connect**. Pode colá-la com `postgresql://`;
+   a aplicação seleciona automaticamente o driver `psycopg` 3.
 2. Publique este projeto num repositório privado GitHub. Nunca publique `.env`
    nem a URL da base de dados.
 3. Crie uma conta em [Render](https://render.com/), escolha **New → Blueprint**
@@ -149,16 +190,24 @@ acordar depois de inatividade.
 4. No Render, em **Environment**, defina `LV_DATABASE_URL` com a URL do Neon.
    Se usar caracteres reservados na password (`@`, `:`, `/`), codifique-os na
    URL. O Blueprint já permite os subdomínios `onrender.com`; ao ligar um
-   domínio próprio no futuro, acrescente-o a `LV_ALLOWED_HOSTS`.
+   domínio próprio no futuro, acrescente-o a `LV_ALLOWED_HOSTS`. Defina também
+   `LV_SETUP_TOKEN` com um valor privado de pelo menos 32 caracteres que consiga
+   copiar no passo seguinte. O Blueprint gera um valor seguro automaticamente,
+   mas pode substituí-lo por outro valor forte conhecido por si.
 5. Faça o primeiro deploy. O contentor aplica `alembic upgrade head` antes de
-   iniciar a aplicação. Abra o URL `https://<nome>.onrender.com/setup` para
-   criar os dois utilizadores.
+   iniciar a aplicação. Abra o URL `https://<nome>.onrender.com/setup`, introduza
+   o `LV_SETUP_TOKEN` e crie os dois utilizadores. Depois de existirem contas,
+   essa página encaminha sempre para o login.
 6. No Android, use Chrome → menu → **Instalar aplicação**. No iPhone, abra no
    Safari → Partilhar → **Adicionar ao ecrã principal**.
 
 As atualizações futuras são feitas por `git push`: o Render volta a construir a
 imagem e executa as novas migrações Alembic. As tabelas e os dados ficam no
 Neon, não no contentor temporário do Render.
+
+O endpoint `/api/health` só responde como saudável quando a aplicação consegue
+consultar realmente a base de dados; o Render não envia tráfego para uma
+instância sem ligação ao Neon.
 
 ### Backups gratuitos
 

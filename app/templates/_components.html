@@ -1,6 +1,6 @@
-{% macro card(title='', subtitle='', class_name='') %}
+{% macro card(title='', subtitle='', class_name='', action_url='', action_label='Abrir') %}
 <section class="card {{ class_name }}">
-  {% if title %}<div class="card-heading"><div><h2>{{ title }}</h2>{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}</div><a class="quiet-button" href="/settings" aria-label="Configurações">•••</a></div>{% endif %}
+  {% if title %}<div class="card-heading"><div><h2>{{ title }}</h2>{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}</div>{% if action_url %}<a class="quiet-button" href="{{ action_url }}" aria-label="{{ action_label }}">↗</a>{% endif %}</div>{% endif %}
   {{ caller() }}
 </section>
 {% endmacro %}

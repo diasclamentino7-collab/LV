@@ -2,20 +2,23 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_, select
 
-from app.core.config import PROJECT_ROOT, get_settings
+from app.core.config import get_settings
+from app.core.templating import templates
 from app.db.session import SessionLocal
 from app.models.moodboard import MoodboardBoard, MoodboardCollection, MoodboardItem
 from app.services.activity import record_activity
+from app.services.auth_session import authenticated_user
+from app.services.csrf import valid_csrf_token
 
 router = APIRouter(prefix="/moodboard")
-templates = Jinja2Templates(directory=PROJECT_ROOT / "app" / "templates")
 
 
 def user_id(request: Request) -> int | None:
-    return request.session.get("user_id")
+    with SessionLocal() as db:
+        user = authenticated_user(db, request)
+        return user.id if user is not None else None
 
 
 def valid_url(value: str) -> bool:
@@ -111,10 +114,13 @@ def create_item(
     source_url: str = Form(""),
     tags: str = Form(""),
     notes: str = Form(""),
+    csrf_token: str = Form(""),
 ) -> RedirectResponse:
     owner_id = user_id(request)
     if owner_id is None:
         return RedirectResponse("/login", status_code=303)
+    if not valid_csrf_token(request, csrf_token):
+        return RedirectResponse("/moodboard/new?error=csrf", status_code=303)
     if not valid_url(image_url) or (source_url and not valid_url(source_url)):
         return RedirectResponse("/moodboard/new?error=url", status_code=303)
     with SessionLocal() as db:
@@ -168,10 +174,13 @@ def edit_item(
     source_url: str = Form(""),
     tags: str = Form(""),
     notes: str = Form(""),
+    csrf_token: str = Form(""),
 ) -> RedirectResponse:
     owner_id = user_id(request)
     if owner_id is None:
         return RedirectResponse("/login", status_code=303)
+    if not valid_csrf_token(request, csrf_token):
+        return RedirectResponse(f"/moodboard/{item_id}/edit?error=csrf", status_code=303)
     if not valid_url(image_url) or (source_url and not valid_url(source_url)):
         return RedirectResponse(f"/moodboard/{item_id}/edit?error=url", status_code=303)
     with SessionLocal() as db:
@@ -192,10 +201,16 @@ def edit_item(
 
 
 @router.post("/{item_id}/favorite", include_in_schema=False)
-def favorite_item(request: Request, item_id: int) -> RedirectResponse:
+def favorite_item(
+    request: Request,
+    item_id: int,
+    csrf_token: str = Form(""),
+) -> RedirectResponse:
     owner_id = user_id(request)
     if owner_id is None:
         return RedirectResponse("/login", status_code=303)
+    if not valid_csrf_token(request, csrf_token):
+        return RedirectResponse("/moodboard?error=csrf", status_code=303)
     with SessionLocal() as db:
         item = db.get(MoodboardItem, item_id)
         if item and not item.is_archived:
@@ -209,10 +224,16 @@ def favorite_item(request: Request, item_id: int) -> RedirectResponse:
 
 
 @router.post("/{item_id}/archive", include_in_schema=False)
-def archive_item(request: Request, item_id: int) -> RedirectResponse:
+def archive_item(
+    request: Request,
+    item_id: int,
+    csrf_token: str = Form(""),
+) -> RedirectResponse:
     owner_id = user_id(request)
     if owner_id is None:
         return RedirectResponse("/login", status_code=303)
+    if not valid_csrf_token(request, csrf_token):
+        return RedirectResponse("/moodboard?error=csrf", status_code=303)
     with SessionLocal() as db:
         item = db.get(MoodboardItem, item_id)
         if item and not item.is_archived:

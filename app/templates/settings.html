@@ -1,1 +1,785 @@
-{% extends "base.html" %}{% block content %}<section class="page-intro"><div><p class="eyebrow">O vosso espaço</p><h1>Configurações</h1><p class="intro-copy">Definam os dados que alimentam o dashboard.</p></div></section><form method="post" class="card form-grid record-form"><label>Nome do projeto<input name="project_name" value="{{ settings.project_name }}" required></label><label>Data do casamento<input type="date" name="wedding_date" value="{{ settings.wedding_date.strftime('%Y-%m-%d') if settings.wedding_date else '' }}"></label><label>Orçamento total<input name="total_budget" type="number" step="0.01" value="{{ settings.total_budget }}"></label><label>Moeda<select name="currency"><option value="EUR" {% if settings.currency == 'EUR' %}selected{% endif %}>EUR (€)</option><option value="USD" {% if settings.currency == 'USD' %}selected{% endif %}>USD ($)</option></select></label><div class="form-actions"><span>Alterações guardadas na base de dados.</span><button class="primary-button">Guardar configurações</button></div></form>{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Configurações · {{ display_app_name|default(app_name) }}{% endblock %}
+
+{% block content %}
+{% set settings_version = settings.settings_version %}
+{% set updater = namespace(name='—') %}
+{% for user in users %}
+  {% if user.id == settings.updated_by_id %}{% set updater.name = user.name %}{% endif %}
+{% endfor %}
+
+<div class="settings-page">
+  <section class="page-intro settings-intro">
+    <div>
+      <p class="eyebrow">O vosso espaço</p>
+      <h1>Configurações</h1>
+      <p class="intro-copy">Personalizem o planeamento para que a aplicação trabalhe à vossa maneira.</p>
+    </div>
+    <div class="settings-updated" aria-label="Informação da última atualização">
+      <span class="settings-status-dot" aria-hidden="true"></span>
+      <span>
+        <strong>Dados guardados</strong>
+        <small>
+          {% if updated_at_local %}
+            Atualizado em {{ updated_at_local.strftime('%d/%m/%Y às %H:%M') }} por {{ updated_by_name|default(updater.name, true) }}
+          {% else %}
+            Pronto para a primeira configuração
+          {% endif %}
+        </small>
+      </span>
+    </div>
+  </section>
+
+  <div class="settings-feedback" aria-live="polite" aria-atomic="true">
+    {% if saved_section %}
+      <div class="settings-alert is-success" role="status">
+        <span aria-hidden="true">✓</span>
+        <div>
+          <strong>Alterações guardadas</strong>
+          <p>
+            {% if saved_section == 'identity' %}A identidade do vosso casamento foi atualizada.
+            {% elif saved_section == 'event' %}Os detalhes do grande dia foram atualizados.
+            {% elif saved_section == 'finance' %}As preferências financeiras foram atualizadas.
+            {% elif saved_section == 'appearance' %}O novo tema já está aplicado à aplicação.
+            {% else %}As preferências de planeamento foram atualizadas.{% endif %}
+          </p>
+        </div>
+      </div>
+    {% endif %}
+    {% if error %}
+      <div class="settings-alert is-error" role="alert">
+        <span aria-hidden="true">!</span>
+        <div>
+          <strong>Não foi possível guardar</strong>
+          <p>
+            {% if error == 'conflict' %}
+              As configurações foram atualizadas noutra sessão. Recarreguem a página para rever os dados mais recentes.
+            {% elif error == 'invalid' %}
+              Revejam os campos desta secção. Há um valor vazio ou num formato não suportado.
+            {% elif error == 'section' %}
+              A secção pedida não existe. Nenhuma alteração foi efetuada.
+            {% elif error == 'csrf' %}
+              A sessão de segurança expirou. Recarreguem a página e tentem novamente.
+            {% elif error == 'currency_confirmation' %}
+              Confirmem a mudança de moeda. Os valores existentes mantêm o mesmo número e não são convertidos automaticamente.
+            {% else %}
+              Ocorreu um erro inesperado. Os dados anteriores continuam preservados.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <section class="settings-overview" aria-label="Resumo das configurações">
+    <article>
+      <span class="settings-overview-icon blush" aria-hidden="true">♡</span>
+      <div>
+        <small>O grande dia</small>
+        <strong>
+          {{ wedding_date_local.strftime('%d/%m/%Y') if wedding_date_local else 'Data por definir' }}
+        </strong>
+      </div>
+    </article>
+    <article>
+      <span class="settings-overview-icon gold" aria-hidden="true">◈</span>
+      <div>
+        <small>Orçamento atual</small>
+        <strong>{{ currency_symbol }}{{ '%.2f'|format(settings.total_budget|float) }}</strong>
+      </div>
+    </article>
+    <article>
+      <span class="settings-overview-icon sand" aria-hidden="true">◫</span>
+      <div>
+        <small>Convidados confirmados</small>
+        <strong>
+          {{ stats.confirmed_guests|default(0) }}
+          {% if settings.guest_target %}<em>de {{ settings.guest_target }}</em>{% else %}<em>confirmados</em>{% endif %}
+        </strong>
+      </div>
+    </article>
+  </section>
+
+  <div class="settings-layout">
+    <nav class="settings-nav" aria-label="Secções das configurações">
+      <p>Configurações</p>
+      <a href="#identity"><span aria-hidden="true">♡</span>Identidade</a>
+      <a href="#event"><span aria-hidden="true">◇</span>Grande dia</a>
+      <a href="#finance"><span aria-hidden="true">€</span>Orçamento</a>
+      <a href="#appearance"><span aria-hidden="true">✦</span>Aparência</a>
+      <a href="#planning"><span aria-hidden="true">✓</span>Planeamento</a>
+      <a href="#account"><span aria-hidden="true">◌</span>Conta e dados</a>
+    </nav>
+
+    <div class="settings-content">
+      <section class="card settings-section" id="identity">
+        <header class="settings-section-heading">
+          <span class="settings-section-icon" aria-hidden="true">♡</span>
+          <div>
+            <p class="eyebrow">A vossa história</p>
+            <h2>Identidade do casamento</h2>
+            <p>Definam como o projeto e o casal aparecem em toda a aplicação.</p>
+          </div>
+        </header>
+
+        <form method="post" action="/settings/identity" class="settings-form" data-settings-form>
+          <input type="hidden" name="settings_version" value="{{ settings_version }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <fieldset>
+            <legend class="visually-hidden">Identidade do casamento</legend>
+            <div class="settings-form-grid">
+              <label class="settings-field span-2" for="project-name">
+                <span>Nome do projeto</span>
+                <input
+                  id="project-name"
+                  name="project_name"
+                  value="{{ settings.project_name }}"
+                  maxlength="150"
+                  autocomplete="off"
+                  required
+                >
+                <small>Este nome identifica o vosso espaço de planeamento.</small>
+              </label>
+
+              <label class="settings-field" for="partner-one-name">
+                <span>Primeiro nome</span>
+                <input
+                  id="partner-one-name"
+                  name="partner_one_name"
+                  value="{{ settings.partner_one_name }}"
+                  maxlength="100"
+                  autocomplete="name"
+                  required
+                >
+              </label>
+
+              <label class="settings-field" for="partner-two-name">
+                <span>Segundo nome</span>
+                <input
+                  id="partner-two-name"
+                  name="partner_two_name"
+                  value="{{ settings.partner_two_name }}"
+                  maxlength="100"
+                  autocomplete="off"
+                  required
+                >
+              </label>
+
+              <label class="settings-field" for="logo-path">
+                <span>Logótipo</span>
+                <input
+                  id="logo-path"
+                  name="logo_path"
+                  value="{{ settings.logo_path }}"
+                  maxlength="500"
+                  placeholder="/static/logotipo.png ou https://..."
+                  inputmode="url"
+                >
+                <small>Indiquem um caminho em /static/ ou um URL HTTPS seguro.</small>
+              </label>
+            </div>
+          </fieldset>
+          <div class="settings-save-row">
+            <p><span aria-hidden="true">●</span> Guardado diretamente na base de dados</p>
+            <button class="primary-button" type="submit" data-submit-label="Guardar identidade">
+              Guardar identidade
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card settings-section" id="event">
+        <header class="settings-section-heading">
+          <span class="settings-section-icon is-gold" aria-hidden="true">◇</span>
+          <div>
+            <p class="eyebrow">O grande dia</p>
+            <h2>Data e locais</h2>
+            <p>A contagem no dashboard e os resumos dos módulos do grande dia partem destes dados.</p>
+          </div>
+        </header>
+
+        <form method="post" action="/settings/event" class="settings-form" data-settings-form>
+          <input type="hidden" name="settings_version" value="{{ settings_version }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <fieldset>
+            <legend class="visually-hidden">Data, hora e locais do casamento</legend>
+            <div class="settings-form-grid">
+              <label class="settings-field" for="wedding-date">
+                <span>Data do casamento</span>
+                <input
+                  id="wedding-date"
+                  type="date"
+                  name="wedding_date"
+                  value="{{ wedding_date_local.strftime('%Y-%m-%d') if wedding_date_local else '' }}"
+                >
+              </label>
+
+              <label class="settings-field" for="wedding-time">
+                <span>Hora</span>
+                <input
+                  id="wedding-time"
+                  type="time"
+                  name="wedding_time"
+                  value="{{ wedding_date_local.strftime('%H:%M') if wedding_date_local else '' }}"
+                >
+              </label>
+
+              <label class="settings-field" for="wedding-timezone">
+                <span>Fuso horário</span>
+                <select id="wedding-timezone" name="wedding_timezone">
+                  <option value="Europe/Lisbon" {% if settings.wedding_timezone == 'Europe/Lisbon' %}selected{% endif %}>Portugal continental</option>
+                  <option value="Atlantic/Madeira" {% if settings.wedding_timezone == 'Atlantic/Madeira' %}selected{% endif %}>Madeira</option>
+                  <option value="Atlantic/Azores" {% if settings.wedding_timezone == 'Atlantic/Azores' %}selected{% endif %}>Açores</option>
+                  <option value="UTC" {% if settings.wedding_timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                </select>
+              </label>
+
+              <label class="settings-field" for="wedding-style">
+                <span>Estilo do casamento</span>
+                <select id="wedding-style" name="wedding_style">
+                  {% for style in [
+                    'Elegante',
+                    'Minimalista',
+                    'Clássico',
+                    'Romântico',
+                    'Vintage',
+                    'Mid-century vintage',
+                    'Rústico',
+                    'Moderno',
+                    'Boho',
+                    'Personalizado'
+                  ] %}
+                    <option value="{{ style }}" {% if settings.wedding_style == style %}selected{% endif %}>{{ style }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+
+              <label class="settings-field" for="wedding-city">
+                <span>Cidade ou zona</span>
+                <input
+                  id="wedding-city"
+                  name="wedding_city"
+                  value="{{ settings.wedding_city }}"
+                  maxlength="150"
+                  autocomplete="address-level2"
+                  placeholder="Ex.: Lisboa"
+                >
+              </label>
+
+              <label class="settings-field" for="ceremony-venue">
+                <span>Salão do Reino · Cerimónia</span>
+                <input
+                  id="ceremony-venue"
+                  name="ceremony_venue"
+                  value="{{ settings.ceremony_venue }}"
+                  maxlength="200"
+                  placeholder="Nome ou morada"
+                >
+                <small>Local principal; contactos e decisões detalhadas ficam no módulo Salão do Reino.</small>
+              </label>
+
+              <label class="settings-field" for="reception-venue">
+                <span>Copo de Água · Festa</span>
+                <input
+                  id="reception-venue"
+                  name="reception_venue"
+                  value="{{ settings.reception_venue }}"
+                  maxlength="200"
+                  placeholder="Nome ou morada"
+                >
+                <small>Local principal; pesquisa, URL e contactos ficam no módulo Copo de Água.</small>
+              </label>
+
+              <label class="settings-field" for="guest-target">
+                <span>Objetivo de convidados</span>
+                <input
+                  id="guest-target"
+                  type="number"
+                  name="guest_target"
+                  value="{{ settings.guest_target }}"
+                  min="0"
+                  max="10000"
+                  step="1"
+                  inputmode="numeric"
+                >
+                <small>Ajuda a acompanhar o progresso da lista.</small>
+              </label>
+            </div>
+          </fieldset>
+          <div class="settings-save-row">
+            <p><span aria-hidden="true">●</span> A contagem passa a atualizar-se continuamente após guardar</p>
+            <button class="primary-button" type="submit" data-submit-label="Guardar grande dia">
+              Guardar grande dia
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card settings-section" id="finance">
+        <header class="settings-section-heading">
+          <span class="settings-section-icon is-sand" aria-hidden="true">€</span>
+          <div>
+            <p class="eyebrow">Controlo financeiro</p>
+            <h2>Orçamento e alertas</h2>
+            <p>Definam o limite global e quando querem ser avisados da utilização.</p>
+          </div>
+        </header>
+
+        <div class="settings-finance-strip" aria-label="Resumo financeiro atual">
+          <div><small>Despesas atuais</small><strong>{{ currency_symbol }}{{ '%.2f'|format(finance.expenses|default(0, true)) }}</strong></div>
+          <div><small>Planeado</small><strong>{{ currency_symbol }}{{ '%.2f'|format(finance.allocated|default(0, true)) }}</strong></div>
+          <div><small>Disponível</small><strong>{{ currency_symbol }}{{ '%.2f'|format(finance.remaining|default(0, true)) }}</strong></div>
+        </div>
+
+        <form method="post" action="/settings/finance" class="settings-form" data-settings-form>
+          <input type="hidden" name="settings_version" value="{{ settings_version }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <fieldset>
+            <legend class="visually-hidden">Orçamento, moeda e alertas</legend>
+            <div class="settings-form-grid">
+              <label class="settings-field" for="total-budget">
+                <span>Orçamento total</span>
+                <span class="settings-input-prefix">
+                  <b aria-hidden="true">{{ currency_symbol }}</b>
+                  <input
+                    id="total-budget"
+                    type="number"
+                    name="total_budget"
+                    value="{{ settings.total_budget }}"
+                    min="0"
+                    max="9999999999.99"
+                    step="0.01"
+                    inputmode="decimal"
+                    required
+                  >
+                </span>
+              </label>
+
+              <label class="settings-field" for="currency">
+                <span>Moeda</span>
+                <select id="currency" name="currency">
+                  <option value="EUR" {% if settings.currency == 'EUR' %}selected{% endif %}>EUR · Euro (€)</option>
+                  <option value="USD" {% if settings.currency == 'USD' %}selected{% endif %}>USD · Dólar ($)</option>
+                  <option value="GBP" {% if settings.currency == 'GBP' %}selected{% endif %}>GBP · Libra (£)</option>
+                  <option value="BRL" {% if settings.currency == 'BRL' %}selected{% endif %}>BRL · Real (R$)</option>
+                  <option value="CHF" {% if settings.currency == 'CHF' %}selected{% endif %}>CHF · Franco suíço</option>
+                </select>
+                <small>Mudar a moeda altera o símbolo, mas não converte os valores existentes.</small>
+              </label>
+
+              {% if finance.expenses|default(0, true) or finance.allocated|default(0, true) or finance.pending|default(0, true) %}
+                <label class="settings-confirm span-2" for="confirm-currency-change">
+                  <input id="confirm-currency-change" type="checkbox" name="confirm_currency_change" value="true">
+                  <span>
+                    <strong>Confirmo se alterar a moeda</strong>
+                    <small>Os montantes atuais serão mantidos exatamente como estão, sem conversão cambial.</small>
+                  </span>
+                </label>
+              {% endif %}
+
+              <label class="settings-field span-2" for="budget-alert-percent">
+                <span>Avisar quando o orçamento atingir</span>
+                <span class="settings-input-suffix">
+                  <input
+                    id="budget-alert-percent"
+                    type="number"
+                    name="budget_alert_percent"
+                    value="{{ settings.budget_alert_percent }}"
+                    min="0"
+                    max="100"
+                    step="1"
+                    inputmode="numeric"
+                    required
+                  >
+                  <b aria-hidden="true">%</b>
+                </span>
+                <small>O alerta ajuda a agir antes de ultrapassarem o valor definido; 0 desativa-o.</small>
+              </label>
+            </div>
+          </fieldset>
+          <div class="settings-save-row">
+            <p><span aria-hidden="true">●</span> As despesas existentes nunca são alteradas</p>
+            <button class="primary-button" type="submit" data-submit-label="Guardar orçamento">
+              Guardar orçamento
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card settings-section" id="appearance">
+        <header class="settings-section-heading">
+          <span class="settings-section-icon" aria-hidden="true">✦</span>
+          <div>
+            <p class="eyebrow">Um espaço só vosso</p>
+            <h2>Aparência</h2>
+            <p>Ajustem a paleta e confirmem o resultado na pré-visualização antes de guardar.</p>
+          </div>
+        </header>
+
+        <form method="post" action="/settings/appearance" class="settings-form" data-settings-form data-theme-form>
+          <input type="hidden" name="settings_version" value="{{ settings_version }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <fieldset>
+            <legend class="visually-hidden">Cores da aplicação</legend>
+            <div class="settings-appearance-layout">
+              <div class="settings-color-grid">
+                <label class="settings-color-field" for="primary-color">
+                  <input id="primary-color" type="color" name="primary_color" value="{{ settings.primary_color }}">
+                  <span><strong>Cor principal</strong><small data-color-value>{{ settings.primary_color|upper }}</small></span>
+                </label>
+                <label class="settings-color-field" for="secondary-color">
+                  <input id="secondary-color" type="color" name="secondary_color" value="{{ settings.secondary_color }}">
+                  <span><strong>Cor secundária</strong><small data-color-value>{{ settings.secondary_color|upper }}</small></span>
+                </label>
+                <label class="settings-color-field" for="accent-color">
+                  <input id="accent-color" type="color" name="accent_color" value="{{ settings.accent_color }}">
+                  <span><strong>Destaque</strong><small data-color-value>{{ settings.accent_color|upper }}</small></span>
+                </label>
+                <label class="settings-color-field" for="background-color">
+                  <input id="background-color" type="color" name="background_color" value="{{ settings.background_color }}">
+                  <span><strong>Fundo</strong><small data-color-value>{{ settings.background_color|upper }}</small></span>
+                </label>
+              </div>
+
+              <div class="settings-theme-preview" data-theme-preview aria-hidden="true">
+                <div class="preview-topbar">
+                  <span class="preview-logo">LV</span>
+                  <span class="preview-dots" aria-hidden="true">•••</span>
+                </div>
+                <div class="preview-body">
+                  <small>O grande dia</small>
+                  <h3>{{ settings.partner_one_name }} &amp; {{ settings.partner_two_name }}</h3>
+                  <p>Todos os detalhes, num só lugar.</p>
+                  <div class="preview-progress"><span></span></div>
+                  <span class="preview-button">Continuar a planear</span>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+          <div class="settings-save-row">
+            <p><span aria-hidden="true">●</span> O contraste é validado para manter a interface legível</p>
+            <button class="primary-button" type="submit" data-submit-label="Aplicar aparência">
+              Aplicar aparência
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card settings-section" id="planning">
+        <header class="settings-section-heading">
+          <span class="settings-section-icon is-gold" aria-hidden="true">✓</span>
+          <div>
+            <p class="eyebrow">Ritmo de planeamento</p>
+            <h2>Preferências e dashboard</h2>
+            <p>Escolham os valores predefinidos e o que é mais importante ver todos os dias.</p>
+          </div>
+        </header>
+
+        <form method="post" action="/settings/planning" class="settings-form" data-settings-form>
+          <input type="hidden" name="settings_version" value="{{ settings_version }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <fieldset>
+            <legend class="settings-group-title">Preferências gerais</legend>
+            <div class="settings-form-grid">
+              <label class="settings-field" for="language">
+                <span>Idioma preferido</span>
+                <select id="language" name="language">
+                  <option value="pt-PT" {% if settings.language == 'pt-PT' %}selected{% endif %}>Português (Portugal)</option>
+                  <option value="en-GB" {% if settings.language == 'en-GB' %}selected{% endif %}>English (UK)</option>
+                  <option value="en-US" {% if settings.language == 'en-US' %}selected{% endif %}>English (US)</option>
+                  <option value="es-ES" {% if settings.language == 'es-ES' %}selected{% endif %}>Español</option>
+                  <option value="fr-FR" {% if settings.language == 'fr-FR' %}selected{% endif %}>Français</option>
+                </select>
+                <small>A interface em português mantém-se; esta opção prepara formatos e traduções futuras.</small>
+              </label>
+
+              <label class="settings-field" for="default-assignee">
+                <span>Responsável predefinido</span>
+                <select id="default-assignee" name="default_assignee">
+                  <option value="">Sem responsável predefinido</option>
+                  {% for user in users %}
+                    <option value="{{ user.name }}" {% if settings.default_assignee == user.name %}selected{% endif %}>{{ user.name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+
+              <label class="settings-field" for="default-task-priority">
+                <span>Prioridade predefinida</span>
+                <select id="default-task-priority" name="default_task_priority">
+                  {% for priority in ['Baixa', 'Média', 'Alta', 'Urgente'] %}
+                    <option value="{{ priority }}" {% if settings.default_task_priority == priority %}selected{% endif %}>{{ priority }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+
+              <label class="settings-field" for="reminder-days-before">
+                <span>Antecedência dos lembretes</span>
+                <span class="settings-input-suffix">
+                  <input
+                    id="reminder-days-before"
+                    type="number"
+                    name="reminder_days_before"
+                    value="{{ settings.reminder_days_before }}"
+                    min="0"
+                    max="365"
+                    step="1"
+                    inputmode="numeric"
+                  >
+                  <b>dias</b>
+                </span>
+              </label>
+            </div>
+
+            <label class="settings-switch" for="reminders-enabled">
+              <span>
+                <strong>Destacar apenas o que está próximo</strong>
+                <small>Quando ativo, o dashboard limita tarefas e pagamentos ao período escolhido; desligado mostra todos os pendentes.</small>
+              </span>
+              <input
+                id="reminders-enabled"
+                type="checkbox"
+                name="reminders_enabled"
+                value="true"
+                {% if settings.reminders_enabled %}checked{% endif %}
+              >
+              <i aria-hidden="true"></i>
+            </label>
+          </fieldset>
+
+          <fieldset class="settings-dashboard-options">
+            <legend class="settings-group-title">Visão do dashboard</legend>
+            <p>Mostrem apenas os blocos que ajudam no vosso planeamento diário.</p>
+            <div class="settings-check-grid">
+              <label for="dashboard-show-countdown">
+                <span aria-hidden="true">◇</span>
+                <strong>Contagem decrescente</strong>
+                <small>Dias e horas até ao casamento</small>
+                <input
+                  id="dashboard-show-countdown"
+                  type="checkbox"
+                  name="dashboard_show_countdown"
+                  value="true"
+                  {% if settings.dashboard_show_countdown %}checked{% endif %}
+                >
+                <i aria-hidden="true"></i>
+              </label>
+              <label for="dashboard-show-finance">
+                <span aria-hidden="true">€</span>
+                <strong>Resumo financeiro</strong>
+                <small>Gastos e orçamento disponível</small>
+                <input
+                  id="dashboard-show-finance"
+                  type="checkbox"
+                  name="dashboard_show_finance"
+                  value="true"
+                  {% if settings.dashboard_show_finance %}checked{% endif %}
+                >
+                <i aria-hidden="true"></i>
+              </label>
+              <label for="dashboard-show-activity">
+                <span aria-hidden="true">◌</span>
+                <strong>Atividade recente</strong>
+                <small>Alterações feitas pelos dois</small>
+                <input
+                  id="dashboard-show-activity"
+                  type="checkbox"
+                  name="dashboard_show_activity"
+                  value="true"
+                  {% if settings.dashboard_show_activity %}checked{% endif %}
+                >
+                <i aria-hidden="true"></i>
+              </label>
+              <label for="dashboard-show-moodboard">
+                <span aria-hidden="true">✦</span>
+                <strong>Moodboard</strong>
+                <small>Últimas inspirações guardadas</small>
+                <input
+                  id="dashboard-show-moodboard"
+                  type="checkbox"
+                  name="dashboard_show_moodboard"
+                  value="true"
+                  {% if settings.dashboard_show_moodboard %}checked{% endif %}
+                >
+                <i aria-hidden="true"></i>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="settings-save-row">
+            <p><span aria-hidden="true">●</span> Estas preferências aplicam-se ao espaço partilhado</p>
+            <button class="primary-button" type="submit" data-submit-label="Guardar preferências">
+              Guardar preferências
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card settings-section" id="account">
+        <header class="settings-section-heading">
+          <span class="settings-section-icon is-sand" aria-hidden="true">◌</span>
+          <div>
+            <p class="eyebrow">Conta e segurança</p>
+            <h2>Colaboração e dados</h2>
+            <p>Consultem quem utiliza o espaço e mantenham uma cópia portátil do planeamento.</p>
+          </div>
+        </header>
+
+        <div class="settings-account-grid">
+          <div class="settings-account-panel">
+            <div class="settings-panel-heading">
+              <div><h3>Utilizadores</h3><p>Cada alteração é gravada diretamente na base de dados partilhada.</p></div>
+              <span class="settings-count">{{ users|length }}</span>
+            </div>
+            <div class="settings-member-list">
+              {% for user in users %}
+                <article class="settings-member">
+                  <span class="settings-member-avatar" aria-hidden="true">{{ user.name[:2]|upper }}</span>
+                  <span>
+                    <strong>{{ user.name }}</strong>
+                    <small>{{ 'Esta sessão' if current_user and user.id == current_user.id else 'Colaborador' }}</small>
+                  </span>
+                  <i class="{{ 'is-online' if user.is_active else '' }}" aria-label="{{ 'Conta ativa' if user.is_active else 'Conta inativa' }}"></i>
+                </article>
+              {% endfor %}
+            </div>
+            <div class="settings-panel-actions">
+              <a class="secondary-button settings-wide-button" href="/activity">Ver histórico completo</a>
+              <a class="secondary-button settings-wide-button" href="/account/password">Alterar a minha password</a>
+            </div>
+          </div>
+
+          <div class="settings-account-panel">
+            <div class="settings-panel-heading">
+              <div><h3>Cópia dos dados</h3><p>Descarreguem um ficheiro com os dados atuais do casamento.</p></div>
+              <span class="settings-data-icon" aria-hidden="true">⇩</span>
+            </div>
+            <div class="settings-data-note">
+              <span aria-hidden="true">✓</span>
+              <p><strong>Exportação segura</strong><small>A exportação não altera nem elimina qualquer registo.</small></p>
+            </div>
+            <a class="primary-button settings-wide-button" href="/settings/export" download>Exportar dados</a>
+          </div>
+
+          <div class="settings-account-panel settings-pwa-panel">
+            <div class="settings-panel-heading">
+              <div><h3>Aplicação no telemóvel</h3><p>Instalem a LV para abrir em ecrã completo, como uma aplicação normal.</p></div>
+              <span class="settings-data-icon" aria-hidden="true">▣</span>
+            </div>
+            <p class="settings-install-status" id="install-status">A verificar compatibilidade deste dispositivo…</p>
+            <button class="secondary-button settings-wide-button" id="install-app" type="button" hidden>
+              Instalar aplicação
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const themeForm = document.querySelector("[data-theme-form]");
+    const preview = document.querySelector("[data-theme-preview]");
+    if (themeForm && preview) {
+      const colorMap = {
+        primary_color: "--preview-primary",
+        secondary_color: "--preview-secondary",
+        accent_color: "--preview-accent",
+        background_color: "--preview-background",
+      };
+      const readableText = (hex) => {
+        const channels = [1, 3, 5].map((index) => {
+          const value = parseInt(hex.slice(index, index + 2), 16) / 255;
+          return value <= 0.04045
+            ? value / 12.92
+            : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        const luminance = (
+          0.2126 * channels[0] +
+          0.7152 * channels[1] +
+          0.0722 * channels[2]
+        );
+        return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05)
+          ? "#333333"
+          : "#FFFFFF";
+      };
+
+      const updatePreview = () => {
+        Object.entries(colorMap).forEach(([name, property]) => {
+          const input = themeForm.elements[name];
+          if (!input) return;
+          preview.style.setProperty(property, input.value);
+          const value = input.closest(".settings-color-field").querySelector("[data-color-value]");
+          if (value) value.textContent = input.value.toUpperCase();
+        });
+        preview.style.setProperty(
+          "--preview-on-primary",
+          readableText(themeForm.elements.primary_color.value)
+        );
+      };
+
+      themeForm.addEventListener("input", updatePreview);
+      updatePreview();
+    }
+
+    const dirtyForms = new Set();
+    document.querySelectorAll("[data-settings-form]").forEach((form) => {
+      const markDirty = () => dirtyForms.add(form);
+      form.addEventListener("input", markDirty);
+      form.addEventListener("change", markDirty);
+      form.addEventListener("submit", () => {
+        dirtyForms.delete(form);
+        const button = form.querySelector("button[type='submit']");
+        if (!button) return;
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+        button.textContent = "A guardar…";
+      });
+    });
+    window.addEventListener("beforeunload", (event) => {
+      if (!dirtyForms.size) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+
+    const installButton = document.getElementById("install-app");
+    const installStatus = document.getElementById("install-status");
+    let installPrompt = null;
+    const isInstalled = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+    const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+
+    if (isInstalled) {
+      installStatus.textContent = "A aplicação já está instalada neste dispositivo.";
+    } else if (isIOS) {
+      installStatus.textContent = "No Safari, toquem em Partilhar e depois em “Adicionar ao ecrã principal”.";
+    } else {
+      installStatus.textContent = "Quando a instalação estiver disponível, o botão ficará ativo.";
+    }
+
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      installPrompt = event;
+      installButton.hidden = false;
+      installStatus.textContent = "Este dispositivo está pronto para instalar a aplicação.";
+    });
+
+    installButton.addEventListener("click", async () => {
+      if (!installPrompt) return;
+      installButton.disabled = true;
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      installStatus.textContent = choice.outcome === "accepted"
+        ? "Instalação iniciada com sucesso."
+        : "Podem instalar mais tarde quando quiserem.";
+      installPrompt = null;
+      installButton.hidden = true;
+    });
+
+    window.addEventListener("appinstalled", () => {
+      installStatus.textContent = "Aplicação instalada neste dispositivo.";
+      installButton.hidden = true;
+    });
+  })();
+</script>
+{% endblock %}

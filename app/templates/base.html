@@ -3,22 +3,31 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#FAF8F6">
-    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="{{ theme.primary if theme is defined else '#D88BA7' }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="LV Wedding">
+    <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
-    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link rel="apple-touch-icon" href="/static/icons/icon.svg">
+    <title>{% block title %}{{ display_app_name|default(app_name) }}{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+    {% if theme is defined %}<style>:root{--primary:{{ theme.primary }};--primary-soft:{{ theme.secondary }};--accent:{{ theme.accent }};--background:{{ theme.background }};{% if theme.on_primary is defined %}--on-primary:{{ theme.on_primary }};{% endif %}}</style>{% endif %}
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Saltar para o conteúdo principal</a>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="Navegação principal">
-        <a class="brand" href="/dashboard" aria-label="LV Wedding Planner, página inicial">
-          <span class="brand-mark">LV</span>
-          <span class="brand-name">Wedding<br><em>Planner</em></span>
-        </a>
+      <aside class="sidebar" id="main-navigation" aria-label="Navegação principal" aria-hidden="false">
+        <div class="sidebar-heading">
+          <a class="brand" href="/dashboard" aria-label="{{ display_app_name|default('LV Wedding Planner') }}, página inicial">
+            {% if ui_settings is defined and ui_settings.logo_path %}<img class="brand-logo" src="{{ ui_settings.logo_path }}" alt="">{% else %}<span class="brand-mark">LV</span>{% endif %}
+            <span class="brand-name">{{ display_app_name|default('LV Wedding Planner') }}</span>
+          </a>
+          <button class="sidebar-close" type="button" aria-label="Fechar menu" aria-controls="main-navigation">×</button>
+        </div>
 
         <nav class="nav-list">
           <a class="nav-item {% if current_section == 'dashboard' %}is-active{% endif %}" href="/dashboard"><span class="nav-icon">⌂</span>Dashboard</a>
@@ -43,6 +52,7 @@
           <a class="nav-item {% if current_section == 'documents' %}is-active{% endif %}" href="/documents"><span class="nav-icon">▤</span>Documentos</a>
           <a class="nav-item {% if current_section == 'moodboard' %}is-active{% endif %}" href="/moodboard"><span class="nav-icon">✿</span>Moodboard</a>
           <a class="nav-item {% if current_section == 'communication' %}is-active{% endif %}" href="/communication"><span class="nav-icon">✎</span>Comunicação</a>
+          <a class="nav-item {% if current_section == 'activity' %}is-active{% endif %}" href="/activity"><span class="nav-icon">◷</span>Atividade</a>
         </nav>
 
         <div class="sidebar-footer">
@@ -54,20 +64,130 @@
           </div>
         </div>
       </aside>
+      <button class="sidebar-overlay" type="button" aria-label="Fechar navegação" tabindex="-1"></button>
 
       <div class="main-frame">
         <header class="header">
-          <button class="menu-button" aria-label="Abrir menu">☰</button>
-          <div class="breadcrumb"><span>LV</span><i>/</i><strong>Visão geral</strong></div>
+          <button class="menu-button" type="button" aria-label="Abrir menu" aria-controls="main-navigation" aria-expanded="false">☰</button>
+          {% set section_titles = {'dashboard': 'Visão geral', 'checklist': 'Checklist', 'timeline': 'Cronograma', 'budget': 'Orçamento', 'payments': 'Pagamentos', 'expenses': 'Despesas', 'vendors': 'Fornecedores', 'guests': 'Convidados', 'table-plan': 'Plano de Mesas', 'kingdom-hall': 'Salão do Reino', 'reception': 'Copo de Água', 'legal-process': 'Processo Legal', 'attire': 'Roupa', 'honeymoon': 'Lua de Mel', 'home': 'Casa', 'gifts': 'Presentes', 'documents': 'Documentos', 'moodboard': 'Moodboard', 'communication': 'Comunicação', 'activity': 'Atividade', 'settings': 'Configurações'} %}
+          <div class="breadcrumb"><a href="/dashboard">LV</a><i>/</i><strong>{{ section_titles.get(current_section, 'Visão geral') }}</strong></div>
           <div class="header-actions">
             <a class="icon-button" href="/moodboard" aria-label="Pesquisar inspirações">⌕</a>
-            <a class="icon-button notification" href="/communication" aria-label="Atividade e comunicação">✦</a>
-            <details class="account-menu"><summary class="header-avatar" aria-label="Menu de conta">{{ request.session.get('user_name', 'LV')[:2]|upper }}</summary><div><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><a href="/account/password">Alterar password</a><form action="/logout" method="post"><button>Terminar sessão</button></form></div></details>
+            <a class="icon-button notification" href="/activity" aria-label="Abrir histórico de atividade">✦</a>
+            <details class="account-menu"><summary class="header-avatar" aria-label="Menu de conta">{{ request.session.get('user_name', 'LV')[:2]|upper }}</summary><div><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><a href="/account/password">Alterar password</a><form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Terminar sessão</button></form></div></details>
           </div>
         </header>
-        <main class="content">{% block content %}{% endblock %}</main>
+        <main class="content" id="main-content" tabindex="-1">{% block content %}{% endblock %}</main>
       </div>
     </div>
-    <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js");</script>
+    <script>
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js");
+      const menuButton = document.querySelector(".menu-button");
+      const sidebar = document.querySelector(".sidebar");
+      const sidebarOverlay = document.querySelector(".sidebar-overlay");
+      const sidebarClose = document.querySelector(".sidebar-close");
+      const mobileNavigation = window.matchMedia("(max-width: 850px)");
+      const focusableSelector = [
+        "a[href]",
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "summary",
+        "[tabindex]:not([tabindex='-1'])"
+      ].join(",");
+      let navigationReturnFocus = null;
+
+      const navigationIsOpen = () => document.body.classList.contains("navigation-open");
+      const setSidebarAvailability = available => {
+        if (!sidebar) return;
+        sidebar.toggleAttribute("inert", !available);
+        sidebar.setAttribute("aria-hidden", available ? "false" : "true");
+      };
+      const sidebarFocusableElements = () => sidebar
+        ? [...sidebar.querySelectorAll(focusableSelector)].filter(element => (
+            !element.hasAttribute("disabled") &&
+            element.getAttribute("aria-hidden") !== "true" &&
+            element.getClientRects().length > 0
+          ))
+        : [];
+      const closeNavigation = (restoreFocus = true) => {
+        if (!mobileNavigation.matches) return;
+        const wasOpen = navigationIsOpen();
+        document.body.classList.remove("navigation-open");
+        menuButton?.setAttribute("aria-expanded", "false");
+        setSidebarAvailability(false);
+        if (wasOpen && restoreFocus) {
+          const target = navigationReturnFocus instanceof HTMLElement
+            ? navigationReturnFocus
+            : menuButton;
+          target?.focus();
+        }
+        navigationReturnFocus = null;
+      };
+      const openNavigation = () => {
+        if (!mobileNavigation.matches || !sidebar) return;
+        navigationReturnFocus = document.activeElement;
+        setSidebarAvailability(true);
+        document.body.classList.add("navigation-open");
+        menuButton?.setAttribute("aria-expanded", "true");
+        window.requestAnimationFrame(() => (sidebarClose || sidebarFocusableElements()[0])?.focus());
+      };
+      const syncNavigationLayout = () => {
+        const focusedInsideSidebar = sidebar?.contains(document.activeElement);
+        document.body.classList.remove("navigation-open");
+        menuButton?.setAttribute("aria-expanded", "false");
+        setSidebarAvailability(!mobileNavigation.matches);
+        if (focusedInsideSidebar) {
+          if (mobileNavigation.matches) menuButton?.focus();
+          else sidebar?.querySelector(".nav-item.is-active")?.focus();
+        }
+        navigationReturnFocus = null;
+      };
+
+      sidebar?.querySelector(".nav-item.is-active")?.setAttribute("aria-current", "page");
+      menuButton?.addEventListener("click", () => {
+        if (navigationIsOpen()) closeNavigation();
+        else openNavigation();
+      });
+      sidebarClose?.addEventListener("click", () => closeNavigation());
+      sidebarOverlay?.addEventListener("click", () => closeNavigation());
+      sidebar?.querySelectorAll("a").forEach(link => (
+        link.addEventListener("click", () => closeNavigation(false))
+      ));
+      document.addEventListener("keydown", event => {
+        if (!mobileNavigation.matches || !navigationIsOpen()) return;
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeNavigation();
+          return;
+        }
+        if (event.key !== "Tab") return;
+        const focusable = sidebarFocusableElements();
+        if (!focusable.length) {
+          event.preventDefault();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !sidebar?.contains(document.activeElement))) {
+          event.preventDefault();
+          last.focus();
+        } else if (
+          !event.shiftKey &&
+          (document.activeElement === last || !sidebar?.contains(document.activeElement))
+        ) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
+      if (typeof mobileNavigation.addEventListener === "function") {
+        mobileNavigation.addEventListener("change", syncNavigationLayout);
+      } else {
+        mobileNavigation.addListener(syncNavigationLayout);
+      }
+      syncNavigationLayout();
+    </script>
+    {% block scripts %}{% endblock %}
   </body>
 </html>
