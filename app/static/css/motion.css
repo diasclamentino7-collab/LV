@@ -34,14 +34,9 @@
   --motion-shadow-rest: 0 8px 28px rgba(74, 49, 57, .055);
   --motion-shadow-depth: 0 18px 42px rgba(74, 49, 57, .12);
   --motion-highlight: rgba(216, 139, 167, .24);
-  --motion-route-home-exit: 220ms;
-  --motion-route-home-enter: 430ms;
-  --motion-route-subtle-exit: 90ms;
-  --motion-route-subtle-enter: 180ms;
-  --motion-route-exit-scale: .958;
-  --motion-route-entry-scale: 1.04;
-  --motion-route-depth: -18px;
-  --motion-route-blur: .7px;
+  --motion-route-home-enter: 220ms;
+  --motion-route-subtle-enter: 140ms;
+  --motion-route-entry-scale: 1.012;
 }
 
 :where(html, body)[data-motion="reduced"],
@@ -477,18 +472,14 @@ html[data-motion-effective="none"] {
 }
 
 /*
- * Route transitions keep the application shell stable. They are deliberately
- * document-based: no content is fetched twice and no client-side router is
- * introduced. sessionStorage only carries the visual entry state.
+ * Routes change immediately. sessionStorage carries only a short visual entry
+ * state, so animation never delays the request or blocks the new interface.
  */
-html.is-lv-route-leaving,
 html[data-route-entry] {
   background: var(--background, #FAF8F6);
 }
 
-html.is-lv-route-leaving body,
 html[data-route-entry] body,
-html.is-lv-route-leaving .app-shell,
 html[data-route-entry] .app-shell {
   background-color: var(--background, #FAF8F6);
 }
@@ -499,16 +490,7 @@ html[data-route-entry] .app-shell {
 }
 
 [data-motion-home].is-home-brand-pulse .brand-name {
-  animation: lv-motion-brand-confirm 380ms var(--motion-ease-spring);
-}
-
-html[data-route-leaving="home"] [data-motion-page] {
-  animation: lv-motion-home-route-out
-    var(--motion-route-home-exit)
-    var(--motion-ease-exit)
-    both;
-  transform-origin: 50% 34%;
-  will-change: transform, opacity, filter;
+  animation: lv-motion-brand-confirm 240ms var(--motion-ease-standard);
 }
 
 html[data-route-entry="home"] [data-motion-page] {
@@ -517,15 +499,6 @@ html[data-route-entry="home"] [data-motion-page] {
     var(--motion-ease-enter)
     both;
   transform-origin: 50% 30%;
-  will-change: transform, opacity, filter;
-}
-
-html[data-route-leaving="subtle"] [data-motion-page] {
-  animation: lv-motion-subtle-route-out
-    var(--motion-route-subtle-exit)
-    var(--motion-ease-exit)
-    both;
-  transform-origin: 50% 18%;
   will-change: transform, opacity;
 }
 
@@ -543,96 +516,32 @@ html[data-route-entry="subtle"] [data-motion-page] {
     transform: translate3d(0, 0, 0) scale(1);
   }
   42% {
-    transform: translate3d(0, 0, 0) scale(.94);
+    transform: translate3d(0, 0, 0) scale(.97);
   }
   72% {
-    transform: translate3d(0, 0, 0) scale(1.018);
-  }
-}
-
-@keyframes lv-motion-home-route-out {
-  from {
-    opacity: 1;
-    filter: none;
-    transform: perspective(1100px) translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    opacity: .68;
-    filter: blur(var(--motion-route-blur));
-    transform:
-      perspective(1100px)
-      translate3d(0, 4px, var(--motion-route-depth))
-      scale(var(--motion-route-exit-scale));
+    transform: translate3d(0, 0, 0) scale(1.006);
   }
 }
 
 @keyframes lv-motion-home-route-in {
   from {
-    opacity: .7;
-    filter: blur(var(--motion-route-blur));
-    transform:
-      perspective(1100px)
-      translate3d(0, 3px, 12px)
-      scale(var(--motion-route-entry-scale));
+    opacity: .82;
+    transform: translate3d(0, 4px, 0) scale(var(--motion-route-entry-scale));
   }
   to {
-    opacity: 1;
-    filter: none;
-    transform: perspective(1100px) translate3d(0, 0, 0) scale(1);
-  }
-}
-
-@keyframes lv-motion-subtle-route-out {
-  from {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    opacity: .84;
-    transform: translate3d(0, 1px, 0) scale(.994);
   }
 }
 
 @keyframes lv-motion-subtle-route-in {
   from {
-    opacity: .78;
-    transform: translate3d(0, 3px, 0) scale(.994);
+    opacity: .86;
+    transform: translate3d(0, 3px, 0) scale(.998);
   }
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
-  }
-}
-
-/* Cross-document page transitions where the browser supports View Transitions. */
-@view-transition {
-  navigation: auto;
-}
-
-::view-transition-group(root),
-::view-transition-image-pair(root) {
-  background: var(--background, #FAF8F6);
-}
-
-::view-transition-old(root) {
-  animation: lv-motion-page-out var(--motion-duration-fast) var(--motion-ease-exit);
-}
-
-::view-transition-new(root) {
-  animation: lv-motion-page-in var(--motion-duration-normal) var(--motion-ease-enter);
-}
-
-@keyframes lv-motion-page-out {
-  to {
-    opacity: .78;
-    transform: translate3d(0, -2px, 0) scale(.995);
-  }
-}
-
-@keyframes lv-motion-page-in {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 6px, 0) scale(.99);
   }
 }
 
@@ -669,14 +578,9 @@ html[data-route-entry="subtle"] [data-motion-page] {
     --motion-tilt-max: 0deg;
     --motion-hover-lift: 0px;
     --motion-press-scale: .99;
-    --motion-route-home-exit: 70ms;
-    --motion-route-home-enter: 120ms;
-    --motion-route-subtle-exit: 60ms;
-    --motion-route-subtle-enter: 100ms;
-    --motion-route-exit-scale: 1;
+    --motion-route-home-enter: 90ms;
+    --motion-route-subtle-enter: 80ms;
     --motion-route-entry-scale: 1;
-    --motion-route-depth: 0px;
-    --motion-route-blur: 0px;
   }
 
   .motion-system-ready .motion-reveal.is-motion-pending {
@@ -692,22 +596,13 @@ html[data-route-entry="subtle"] [data-motion-page] {
     --motion-parallax-y: 0px !important;
   }
 
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation-duration: 1ms;
-  }
 }
 
 html[data-motion="reduced"],
 html[data-motion-effective="reduced"] {
-  --motion-route-home-exit: 70ms;
-  --motion-route-home-enter: 120ms;
-  --motion-route-subtle-exit: 60ms;
-  --motion-route-subtle-enter: 100ms;
-  --motion-route-exit-scale: 1;
+  --motion-route-home-enter: 90ms;
+  --motion-route-subtle-enter: 80ms;
   --motion-route-entry-scale: 1;
-  --motion-route-depth: 0px;
-  --motion-route-blur: 0px;
 }
 
 html[data-motion-effective="none"] *,
@@ -736,9 +631,7 @@ html[data-motion-effective="none"] .motion-toast {
 }
 
 html[data-motion="none"][data-route-entry] [data-motion-page],
-html[data-motion="none"][data-route-leaving] [data-motion-page],
-html[data-motion-effective="none"][data-route-entry] [data-motion-page],
-html[data-motion-effective="none"][data-route-leaving] [data-motion-page] {
+html[data-motion-effective="none"][data-route-entry] [data-motion-page] {
   animation: none !important;
   filter: none !important;
   opacity: 1 !important;
@@ -747,12 +640,9 @@ html[data-motion-effective="none"][data-route-leaving] [data-motion-page] {
 
 @media (max-width: 560px) {
   :root {
-    --motion-route-home-exit: 180ms;
-    --motion-route-home-enter: 320ms;
-    --motion-route-exit-scale: .978;
-    --motion-route-entry-scale: 1.018;
-    --motion-route-depth: -6px;
-    --motion-route-blur: 0px;
+    --motion-route-home-enter: 170ms;
+    --motion-route-subtle-enter: 120ms;
+    --motion-route-entry-scale: 1.008;
   }
 
   .motion-toast-region {
@@ -774,13 +664,8 @@ html[data-motion-effective="none"][data-route-leaving] [data-motion-page] {
 
 @media (max-width: 560px) and (prefers-reduced-motion: reduce) {
   :root {
-    --motion-route-home-exit: 70ms;
-    --motion-route-home-enter: 120ms;
-    --motion-route-subtle-exit: 60ms;
-    --motion-route-subtle-enter: 100ms;
-    --motion-route-exit-scale: 1;
+    --motion-route-home-enter: 90ms;
+    --motion-route-subtle-enter: 80ms;
     --motion-route-entry-scale: 1;
-    --motion-route-depth: 0px;
-    --motion-route-blur: 0px;
   }
 }

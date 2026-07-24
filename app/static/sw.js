@@ -1,4 +1,4 @@
-const CACHE = "lv-wedding-v5";
+const CACHE = "lv-wedding-v6";
 const ASSETS = [
   "/static/css/app.css",
   "/static/css/motion.css",

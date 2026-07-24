@@ -109,8 +109,6 @@
     highlightTimers: new WeakMap(),
     toastRegion: null,
     parallaxFrame: 0,
-    routeTimer: 0,
-    routeNavigationInProgress: false,
     navigationApproved: false,
     systemPreferenceChanged: null,
     pointerCapabilityChanged: null,
@@ -375,18 +373,7 @@
   }
 
   function clearRouteExit() {
-    if (state.routeTimer) {
-      window.clearTimeout(state.routeTimer);
-      state.routeTimer = 0;
-    }
-    state.routeNavigationInProgress = false;
     state.navigationApproved = false;
-    rootElement.classList.remove("is-lv-route-leaving");
-    rootElement.removeAttribute("data-route-leaving");
-    var page = doc.querySelector(SELECTORS.page);
-    if (page) {
-      page.removeAttribute("aria-busy");
-    }
   }
 
   function finishRouteArrival() {
@@ -396,16 +383,16 @@
     }
     var mode = state.effectiveMode;
     var isHome = entry === "home" && isDashboardLocation(window.location);
+    if (isHome) {
+      var main = doc.querySelector("#main-content");
+      if (main) {
+        main.focus({ preventScroll: true });
+      }
+    }
     var duration =
-      mode === "none" ? 0 : mode === "reduced" ? 140 : isHome ? 460 : 190;
+      mode === "none" ? 0 : mode === "reduced" ? 90 : isHome ? 220 : 140;
     window.setTimeout(function () {
       rootElement.removeAttribute("data-route-entry");
-      if (isHome) {
-        var main = doc.querySelector("#main-content");
-        if (main) {
-          main.focus({ preventScroll: true });
-        }
-      }
       emit("lv:motion:route-entered", {
         kind: entry,
         destination: window.location.href,
@@ -447,36 +434,11 @@
 
     var kind = settings.kind === "home" ? "home" : "subtle";
     storeRouteEntry(kind);
-
-    if (state.routeNavigationInProgress) {
-      window.clearTimeout(state.routeTimer);
-      window.location.assign(url.href);
-      return true;
-    }
-
-    state.routeNavigationInProgress = true;
-    rootElement.setAttribute("data-route-leaving", kind);
-    rootElement.classList.add("is-lv-route-leaving");
-    var page = doc.querySelector(SELECTORS.page);
-    if (page) {
-      page.setAttribute("aria-busy", "true");
-    }
     emit("lv:motion:route-leaving", {
       kind: kind,
       destination: url.href,
     });
-
-    var delay =
-      state.effectiveMode === "none"
-        ? 0
-        : state.effectiveMode === "reduced"
-          ? 70
-          : kind === "home"
-            ? 220
-            : 90;
-    state.routeTimer = window.setTimeout(function () {
-      window.location.assign(url.href);
-    }, delay);
+    window.location.assign(url.href);
     return true;
   }
 
@@ -489,7 +451,7 @@
     brand.classList.add("is-home-brand-pulse");
     window.setTimeout(function () {
       brand.classList.remove("is-home-brand-pulse");
-    }, state.effectiveMode === "reduced" ? 150 : 420);
+    }, state.effectiveMode === "reduced" ? 120 : 260);
   }
 
   function isSkippedRouteLink(anchor, event) {
@@ -1921,10 +1883,6 @@
     window.removeEventListener("resize", scheduleParallax);
     window.removeEventListener("beforeunload", onBeforeUnload);
     window.removeEventListener("pageshow", onPageShow);
-    if (state.routeTimer) {
-      window.clearTimeout(state.routeTimer);
-      state.routeTimer = 0;
-    }
     if (typeof reduceQuery.removeEventListener === "function") {
       reduceQuery.removeEventListener(
         "change",

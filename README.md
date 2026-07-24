@@ -130,11 +130,12 @@ Mesmo que seja escolhido movimento completo nas Configurações, a aplicação
 reduz os efeitos quando `prefers-reduced-motion` está ativo. Com **Sem
 animações**, todas as páginas e ações continuam completamente funcionais.
 
-O bloco **LV – Wedding Planner** regressa ao Dashboard através de uma transição
-cinematográfica curta e centralizada. Se o Dashboard já estiver aberto, não há
-reload: apenas uma confirmação visual no próprio logótipo. Formulários alterados
-pedem confirmação antes de qualquer navegação e o efeito é automaticamente
-reduzido no telemóvel ou quando `prefers-reduced-motion` está ativo.
+O bloco **LV – Wedding Planner** regressa imediatamente ao Dashboard e a nova
+página recebe apenas uma entrada curta e subtil, sem temporizadores antes da
+navegação. Se o Dashboard já estiver aberto, não há reload: apenas uma
+confirmação visual no próprio logótipo. Formulários alterados pedem confirmação
+antes de qualquer navegação e o efeito é automaticamente reduzido no telemóvel
+ou quando `prefers-reduced-motion` está ativo.
 
 O Dashboard consulta periodicamente um resumo autenticado e sem cache. Quando
 outra pessoa altera convidados, checklist, orçamento ou data do casamento,
