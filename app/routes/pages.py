@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.config import PROJECT_ROOT, get_settings
 from app.db.session import SessionLocal
 from app.models.core import WorkspaceRecord
-from app.models.planning import BudgetCategory, Guest, LegalDocument, Task, Vendor
+from app.models.planning import BudgetCategory, Guest, LegalDocument, Payment, Task, Vendor
 from app.services.activity import record_activity
 
 router = APIRouter()
@@ -109,6 +109,21 @@ MODULES = {
         "Limites planeados por categoria e controlo financeiro.",
         BudgetCategory,
         (Field("name", "Categoria"), Field("planned_limit", "Limite previsto", "number")),
+    ),
+    "payments": Module(
+        "payments",
+        "Pagamentos",
+        "Livro central de pagamentos ligado ao orçamento e fornecedores.",
+        Payment,
+        (
+            Field("category_id", "ID da categoria", "number"),
+            Field("vendor_id", "ID do fornecedor", "number"),
+            Field("amount", "Valor", "number"),
+            Field("payment_date", "Data", "date"),
+            Field("status", "Estado", "select", ("Pago", "Pendente")),
+            Field("reference", "Referência"),
+            Field("notes", "Notas", "textarea"),
+        ),
     ),
     "legal-process": Module(
         "legal-process",

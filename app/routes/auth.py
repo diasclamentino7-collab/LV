@@ -60,8 +60,32 @@ def login(
         user = db.get(User, user_id)
         if user is None or not user.is_active or not verify_password(password, user.password_hash):
             return RedirectResponse("/login?error=1", status_code=303)
+        if user.name.casefold() == "leonor":
+            request.session["pending_user_id"] = user.id
+            request.session["pending_user_name"] = user.name
+            return RedirectResponse("/love-confirmation", status_code=303)
         request.session["user_id"] = user.id
         request.session["user_name"] = user.name
+    return RedirectResponse("/dashboard", status_code=303)
+
+
+@router.get("/love-confirmation", response_class=HTMLResponse, include_in_schema=False)
+def love_confirmation_page(request: Request) -> Response:
+    if request.session.get("pending_user_id") is None:
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(
+        request, "love_confirmation.html", {"app_name": get_settings().app_name}
+    )
+
+
+@router.post("/love-confirmation", include_in_schema=False)
+def love_confirmation(request: Request, answer: str = Form(...)) -> RedirectResponse:
+    user_id = request.session.pop("pending_user_id", None)
+    user_name = request.session.pop("pending_user_name", None)
+    if user_id is None or answer not in {"sim", "simmmm"}:
+        return RedirectResponse("/login", status_code=303)
+    request.session["user_id"] = user_id
+    request.session["user_name"] = user_name
     return RedirectResponse("/dashboard", status_code=303)
 
 

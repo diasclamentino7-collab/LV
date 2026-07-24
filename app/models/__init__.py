@@ -2,7 +2,7 @@
 
 from app.db.base import Base
 from app.models.core import Activity, ProjectSettings, User, WorkspaceRecord
-from app.models.planning import BudgetCategory, Expense, Guest, LegalDocument, Task, Vendor
+from app.models.planning import BudgetCategory, Expense, Guest, LegalDocument, Payment, Task, Vendor
 
 __all__ = [
     "Activity",
@@ -11,6 +11,7 @@ __all__ = [
     "Expense",
     "Guest",
     "LegalDocument",
+    "Payment",
     "ProjectSettings",
     "Task",
     "User",

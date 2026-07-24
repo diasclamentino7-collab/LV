@@ -1,4 +1,5 @@
 from datetime import datetime, time
+from decimal import Decimal
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -9,6 +10,7 @@ from app.core.config import PROJECT_ROOT, get_settings
 from app.db.session import SessionLocal
 from app.models.core import Activity, ProjectSettings, User
 from app.models.planning import BudgetCategory, Guest, Task
+from app.services.finance import financial_summary
 
 router = APIRouter()
 templates = Jinja2Templates(directory=PROJECT_ROOT / "app" / "templates")
@@ -89,6 +91,8 @@ def home(request: Request) -> Response:
             ),
         }
         settings = db.scalar(select(ProjectSettings).order_by(ProjectSettings.id).limit(1))
+        configured_budget = settings.total_budget if settings and settings.total_budget else "0"
+        finance = financial_summary(db, Decimal(configured_budget))
         users = db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.name)).all()
         countdown = None
         if settings and settings.wedding_date:
@@ -111,5 +115,6 @@ def home(request: Request) -> Response:
             "stats": stats,
             "countdown": countdown,
             "couple_names": " e ".join(user.name for user in users),
+            "finance": finance,
         },
     )

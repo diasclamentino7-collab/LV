@@ -50,6 +50,27 @@ class Expense(TimestampedModel, Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
 
+class Payment(TimestampedModel, Base):
+    """Single payment ledger shared by budgets, vendors and dashboard summaries."""
+
+    __tablename__ = "payments"
+
+    category_id: Mapped[int] = mapped_column(ForeignKey("budget_categories.id"), index=True)
+    vendor_id: Mapped[int | None] = mapped_column(
+        ForeignKey("vendors.id"), nullable=True, index=True
+    )
+    expense_id: Mapped[int | None] = mapped_column(
+        ForeignKey("expenses.id"), nullable=True, index=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    payment_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(30), default="Pago", index=True)
+    reference: Mapped[str] = mapped_column(String(200), default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    document_path: Mapped[str] = mapped_column(String(500), default="")
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+
 class Guest(TimestampedModel, Base):
     __tablename__ = "guests"
 
