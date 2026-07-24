@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import get_settings
-from app.routes import auth, health, pages, web
+from app.routes import auth, health, moodboard, pages, web
 
 
 @asynccontextmanager
@@ -44,7 +44,8 @@ def create_app() -> FastAPI:
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; "
-            "font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'"
+            "font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; "
+            "script-src 'self' 'unsafe-inline'"
         )
         return response
 
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     application.mount("/static", StaticFiles(directory=settings.static_path), name="static")
     application.include_router(web.router)
     application.include_router(auth.router)
+    application.include_router(moodboard.router)
     application.include_router(pages.router)
     application.include_router(health.router, prefix="/api")
     return application

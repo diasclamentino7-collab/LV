@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -11,12 +11,13 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import Select, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import PROJECT_ROOT, get_settings
 from app.db.session import SessionLocal
 from app.models.core import WorkspaceRecord
-from app.models.planning import BudgetCategory, Guest, LegalDocument, Payment, Task, Vendor
+from app.models.planning import BudgetCategory, Expense, Guest, LegalDocument, Payment, Task, Vendor
 from app.services.activity import record_activity
 
 router = APIRouter()
@@ -29,6 +30,7 @@ class Field:
     label: str
     kind: str = "text"
     options: tuple[str, ...] = ()
+    required: bool = False
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,7 @@ class Module:
     description: str
     model: type[Any] | None = None
     fields: tuple[Field, ...] = ()
+    legacy_slugs: tuple[str, ...] = ()
 
 
 COMMON_FIELDS = (
@@ -116,12 +119,27 @@ MODULES = {
         "Livro central de pagamentos ligado ao orçamento e fornecedores.",
         Payment,
         (
-            Field("category_id", "ID da categoria", "number"),
-            Field("vendor_id", "ID do fornecedor", "number"),
-            Field("amount", "Valor", "number"),
-            Field("payment_date", "Data", "date"),
+            Field("category_id", "Categoria", "category", required=True),
+            Field("vendor_id", "Fornecedor", "vendor"),
+            Field("amount", "Valor", "number", required=True),
+            Field("payment_date", "Data", "date", required=True),
             Field("status", "Estado", "select", ("Pago", "Pendente")),
             Field("reference", "Referência"),
+            Field("notes", "Notas", "textarea"),
+        ),
+    ),
+    "expenses": Module(
+        "expenses",
+        "Despesas",
+        "Despesas atuais que alimentam automaticamente o resumo financeiro.",
+        Expense,
+        (
+            Field("category_id", "Categoria", "category", required=True),
+            Field("vendor_id", "Fornecedor", "vendor"),
+            Field("description", "Descrição", required=True),
+            Field("amount", "Valor", "number", required=True),
+            Field("expense_date", "Data", "date", required=True),
+            Field("status", "Estado", "select", ("Pendente", "Confirmada", "Cancelada")),
             Field("notes", "Notas", "textarea"),
         ),
     ),
@@ -141,10 +159,11 @@ MODULES = {
     ),
     "kingdom-hall": Module(
         "kingdom-hall",
-        "Salão do Reino",
-        "Informações, programa, oficiante, discurso e coordenação.",
+        "Salão do Reino · Cerimónia",
+        "Programa, discurso, responsáveis e coordenação da cerimónia.",
         None,
         COMMON_FIELDS,
+        ("ceremony",),
     ),
     "communication": Module(
         "communication",
@@ -163,31 +182,39 @@ MODULES = {
             Field("event_date", "Data", "date"),
         ),
     ),
-    "quinta": Module(
-        "quinta",
-        "Quinta",
-        "Locais, contactos e referências para a receção.",
+    "reception": Module(
+        "reception",
+        "Copo de Água · Festa",
+        "Local, contactos e decisões para a festa do grande dia.",
         None,
         (
-            Field("title", "Nome do local"),
+            Field("title", "Nome do local / elemento"),
             Field("location", "Zona / Localização"),
             Field("contact", "Contacto"),
             Field("source_url", "URL", "url"),
-            Field("description", "Notas", "textarea"),
+            Field("description", "Detalhes / Notas", "textarea"),
+            Field("event_date", "Data / Hora", "datetime-local"),
             Field(
                 "status",
                 "Estado",
                 "select",
-                ("A pesquisar", "Visitada", "Pré-selecionada", "Escolhida"),
+                (
+                    "A pesquisar",
+                    "Visitada",
+                    "Pré-selecionada",
+                    "Escolhida",
+                    "Pendente",
+                    "Em curso",
+                    "Concluído",
+                ),
             ),
         ),
+        ("quinta",),
     ),
 }
 for slug, title in {
     "table-plan": "Plano de Mesas",
     "timeline": "Cronograma",
-    "ceremony": "Cerimónia",
-    "reception": "Receção",
     "attire": "Roupa",
     "honeymoon": "Lua de Mel",
     "home": "Casa",
@@ -198,6 +225,11 @@ for slug, title in {
     MODULES[slug] = Module(
         slug, title, f"Registos e decisões de {title.lower()}.", None, COMMON_FIELDS
     )
+
+# Keep old URLs and open forms compatible while presenting only the consolidated
+# modules in the interface.
+MODULES["ceremony"] = MODULES["kingdom-hall"]
+MODULES["quinta"] = MODULES["reception"]
 
 
 def logged_user_id(request: Request) -> int | None:
@@ -211,10 +243,20 @@ def require_login(request: Request) -> RedirectResponse | None:
 
 
 def value_for(field: Field, raw: str) -> Any:
+    if field.kind in {"category", "vendor"}:
+        return int(raw) if raw else None
     if not raw:
-        return None if field.kind == "date" else Decimal("0") if field.kind == "number" else ""
+        return (
+            None
+            if field.kind in {"date", "datetime-local"}
+            else Decimal("0")
+            if field.kind == "number"
+            else ""
+        )
     if field.kind == "date":
         return date.fromisoformat(raw)
+    if field.kind == "datetime-local":
+        return datetime.fromisoformat(raw)
     if field.kind == "number":
         try:
             return Decimal(raw.replace(",", "."))
@@ -223,11 +265,11 @@ def value_for(field: Field, raw: str) -> Any:
     return raw.strip()
 
 
-def module_query(spec: Module, search: str) -> Select[Any]:
+def module_query(spec: Module, search: str, archived: bool = False) -> Select[Any]:
     model = spec.model or WorkspaceRecord
-    statement = select(model).where(model.is_archived.is_(False))
+    statement = select(model).where(model.is_archived.is_(archived))
     if spec.model is None:
-        statement = statement.where(WorkspaceRecord.module == spec.slug)
+        statement = statement.where(WorkspaceRecord.module.in_((spec.slug, *spec.legacy_slugs)))
         if search:
             statement = statement.where(
                 or_(
@@ -236,17 +278,27 @@ def module_query(spec: Module, search: str) -> Select[Any]:
                 )
             )
     elif search:
-        title_column = getattr(
-            model, "title", getattr(model, "name", getattr(model, "company", None))
+        title_column = (
+            getattr(model, "title", None)
+            or getattr(model, "name", None)
+            or getattr(model, "company", None)
+            or getattr(model, "description", None)
+            or getattr(model, "reference", None)
         )
-        statement = statement.where(title_column.ilike(f"%{search}%"))
+        if title_column is not None:
+            statement = statement.where(title_column.ilike(f"%{search}%"))
     return statement.order_by(model.updated_at.desc())
 
 
 def record_for(spec: Module, db: Session, record_id: int) -> Any | None:
     model = spec.model or WorkspaceRecord
     record = db.get(model, record_id)
-    if record is None or record.is_archived or (spec.model is None and record.module != spec.slug):
+    valid_modules = (spec.slug, *spec.legacy_slugs)
+    if (
+        record is None
+        or record.is_archived
+        or (spec.model is None and record.module not in valid_modules)
+    ):
         return None
     return record
 
@@ -256,15 +308,57 @@ def save_values(spec: Module, record: Any, values: dict[str, str]) -> None:
         setattr(record, field.name, value_for(field, values.get(field.name, "")))
 
 
+def relation_choices(db: Session) -> dict[str, list[Any]]:
+    return {
+        "categories": list(
+            db.scalars(
+                select(BudgetCategory)
+                .where(BudgetCategory.is_archived.is_(False))
+                .order_by(BudgetCategory.name)
+            ).all()
+        ),
+        "vendors": list(
+            db.scalars(
+                select(Vendor).where(Vendor.is_archived.is_(False)).order_by(Vendor.company)
+            ).all()
+        ),
+    }
+
+
+def record_label(record: Any) -> str:
+    label = (
+        getattr(record, "title", None)
+        or getattr(record, "name", None)
+        or getattr(record, "company", None)
+        or getattr(record, "description", None)
+    )
+    if label:
+        return str(label)
+    if isinstance(record, Payment):
+        return f"Pagamento €{record.amount}"
+    return f"Registo #{record.id}"
+
+
+@router.get("/ceremony", include_in_schema=False)
+def legacy_ceremony_page() -> RedirectResponse:
+    return RedirectResponse("/kingdom-hall", status_code=308)
+
+
+@router.get("/quinta", include_in_schema=False)
+def legacy_quinta_page() -> RedirectResponse:
+    return RedirectResponse("/reception", status_code=308)
+
+
 @router.get("/{slug}", response_class=HTMLResponse, include_in_schema=False)
-def module_page(request: Request, slug: str, q: str = "") -> Response:
+def module_page(request: Request, slug: str, q: str = "", archived: bool = False) -> Response:
     if redirect := require_login(request):
         return redirect
     spec = MODULES.get(slug)
     if spec is None:
         return RedirectResponse("/dashboard", status_code=303)
     with SessionLocal() as db:
-        records = db.scalars(module_query(spec, q)).all()
+        records = db.scalars(module_query(spec, q, archived)).all()
+        record_labels = {record.id: record_label(record) for record in records}
     return templates.TemplateResponse(
         request,
         "module_list.html",
@@ -274,6 +368,10 @@ def module_page(request: Request, slug: str, q: str = "") -> Response:
             "module": spec,
             "records": records,
             "search": q,
+            "record_labels": record_labels,
+            "message": request.query_params.get("message"),
+            "error": request.query_params.get("error"),
+            "show_archived": archived,
         },
     )
 
@@ -285,6 +383,8 @@ def new_record(request: Request, slug: str) -> Response:
     spec = MODULES.get(slug)
     if spec is None:
         return RedirectResponse("/dashboard", status_code=303)
+    with SessionLocal() as db:
+        choices = relation_choices(db)
     return templates.TemplateResponse(
         request,
         "module_form.html",
@@ -293,6 +393,7 @@ def new_record(request: Request, slug: str) -> Response:
             "current_section": slug,
             "module": spec,
             "record": None,
+            **choices,
         },
     )
 
@@ -306,25 +407,25 @@ async def create_record(request: Request, slug: str) -> RedirectResponse:
         return RedirectResponse("/dashboard", status_code=303)
     values = {key: str(value) for key, value in (await request.form()).items()}
     with SessionLocal() as db:
-        record = spec.model() if spec.model else WorkspaceRecord(module=slug)
-        save_values(spec, record, values)
-        record.created_by_id = logged_user_id(request)
-        record.updated_by_id = logged_user_id(request)
-        db.add(record)
-        record_name = (
-            getattr(record, "title", None)
-            or getattr(record, "name", None)
-            or getattr(record, "company", "registo")
-        )
-        record_activity(
-            db,
-            logged_user_id(request),
-            "criou",
-            f"adicionou {spec.title.lower()}: {record_name}",
-            slug,
-        )
-        db.commit()
-    return RedirectResponse(f"/{slug}", status_code=303)
+        try:
+            record = spec.model() if spec.model else WorkspaceRecord(module=spec.slug)
+            save_values(spec, record, values)
+            record.created_by_id = logged_user_id(request)
+            record.updated_by_id = logged_user_id(request)
+            db.add(record)
+            record_name = record_label(record)
+            record_activity(
+                db,
+                logged_user_id(request),
+                "criou",
+                f"adicionou {spec.title.lower()}: {record_name}",
+                spec.slug,
+            )
+            db.commit()
+        except (IntegrityError, ValueError):
+            db.rollback()
+            return RedirectResponse(f"/{slug}/new?error=invalid", status_code=303)
+    return RedirectResponse(f"/{slug}?message=created", status_code=303)
 
 
 @router.get("/{slug}/{record_id}/edit", response_class=HTMLResponse, include_in_schema=False)
@@ -338,6 +439,7 @@ def edit_record(request: Request, slug: str, record_id: int) -> Response:
         record = record_for(spec, db, record_id)
         if record is None:
             return RedirectResponse(f"/{slug}", status_code=303)
+        choices = relation_choices(db)
         db.expunge(record)
     return templates.TemplateResponse(
         request,
@@ -347,6 +449,7 @@ def edit_record(request: Request, slug: str, record_id: int) -> Response:
             "current_section": slug,
             "module": spec,
             "record": record,
+            **choices,
         },
     )
 
@@ -362,13 +465,21 @@ async def update_record(request: Request, slug: str, record_id: int) -> Redirect
     with SessionLocal() as db:
         record = record_for(spec, db, record_id)
         if record is not None:
-            save_values(spec, record, values)
-            record.updated_by_id = logged_user_id(request)
-            record_activity(
-                db, logged_user_id(request), "alterou", f"alterou {spec.title.lower()}", slug
-            )
-            db.commit()
-    return RedirectResponse(f"/{slug}", status_code=303)
+            try:
+                save_values(spec, record, values)
+                record.updated_by_id = logged_user_id(request)
+                record_activity(
+                    db,
+                    logged_user_id(request),
+                    "alterou",
+                    f"alterou {spec.title.lower()}",
+                    spec.slug,
+                )
+                db.commit()
+            except (IntegrityError, ValueError):
+                db.rollback()
+                return RedirectResponse(f"/{slug}/{record_id}/edit?error=invalid", status_code=303)
+    return RedirectResponse(f"/{slug}?message=updated", status_code=303)
 
 
 @router.post("/{slug}/{record_id}/archive", include_in_schema=False)
@@ -383,7 +494,38 @@ def archive_record(request: Request, slug: str, record_id: int) -> RedirectRespo
                 record.is_archived = True
                 record.updated_by_id = logged_user_id(request)
                 record_activity(
-                    db, logged_user_id(request), "arquivou", f"arquivou {spec.title.lower()}", slug
+                    db,
+                    logged_user_id(request),
+                    "arquivou",
+                    f"arquivou {spec.title.lower()}",
+                    spec.slug,
                 )
                 db.commit()
-    return RedirectResponse(f"/{slug}", status_code=303)
+    return RedirectResponse(f"/{slug}?message=archived", status_code=303)
+
+
+@router.post("/{slug}/{record_id}/restore", include_in_schema=False)
+def restore_record(request: Request, slug: str, record_id: int) -> RedirectResponse:
+    if redirect := require_login(request):
+        return redirect
+    spec = MODULES.get(slug)
+    if spec is not None:
+        with SessionLocal() as db:
+            model = spec.model or WorkspaceRecord
+            record = db.get(model, record_id)
+            valid_modules = (spec.slug, *spec.legacy_slugs)
+            belongs_to_module = spec.model is not None or (
+                record is not None and record.module in valid_modules
+            )
+            if record is not None and record.is_archived and belongs_to_module:
+                record.is_archived = False
+                record.updated_by_id = logged_user_id(request)
+                record_activity(
+                    db,
+                    logged_user_id(request),
+                    "restaurou",
+                    f"restaurou {spec.title.lower()}",
+                    spec.slug,
+                )
+                db.commit()
+    return RedirectResponse(f"/{slug}?message=restored", status_code=303)

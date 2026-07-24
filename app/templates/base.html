@@ -27,14 +27,13 @@
           <a class="nav-item {% if current_section == 'timeline' %}is-active{% endif %}" href="/timeline"><span class="nav-icon">◌</span>Cronograma</a>
           <a class="nav-item {% if current_section == 'budget' %}is-active{% endif %}" href="/budget"><span class="nav-icon">◈</span>Orçamento</a>
           <a class="nav-item {% if current_section == 'payments' %}is-active{% endif %}" href="/payments"><span class="nav-icon">€</span>Pagamentos</a>
+          <a class="nav-item {% if current_section == 'expenses' %}is-active{% endif %}" href="/expenses"><span class="nav-icon">−</span>Despesas</a>
           <a class="nav-item {% if current_section == 'vendors' %}is-active{% endif %}" href="/vendors"><span class="nav-icon">✦</span>Fornecedores</a>
           <a class="nav-item {% if current_section == 'guests' %}is-active{% endif %}" href="/guests"><span class="nav-icon">◫</span>Convidados</a>
           <a class="nav-item {% if current_section == 'table-plan' %}is-active{% endif %}" href="/table-plan"><span class="nav-icon">⌘</span>Plano de Mesas</a>
           <p class="nav-label">O grande dia</p>
-          <a class="nav-item {% if current_section == 'ceremony' %}is-active{% endif %}" href="/ceremony"><span class="nav-icon">♡</span>Cerimónia</a>
-          <a class="nav-item {% if current_section == 'reception' %}is-active{% endif %}" href="/reception"><span class="nav-icon">✧</span>Receção</a>
-          <a class="nav-item {% if current_section == 'quinta' %}is-active{% endif %}" href="/quinta"><span class="nav-icon">⌂</span>Quinta</a>
-          <a class="nav-item {% if current_section == 'kingdom-hall' %}is-active{% endif %}" href="/kingdom-hall"><span class="nav-icon">⌂</span>Salão do Reino</a>
+          <a class="nav-item {% if current_section == 'kingdom-hall' %}is-active{% endif %}" href="/kingdom-hall"><span class="nav-icon">♡</span>Salão do Reino · Cerimónia</a>
+          <a class="nav-item {% if current_section == 'reception' %}is-active{% endif %}" href="/reception"><span class="nav-icon">✧</span>Copo de Água · Festa</a>
           <a class="nav-item {% if current_section == 'legal-process' %}is-active{% endif %}" href="/legal-process"><span class="nav-icon">§</span>Processo Legal</a>
           <p class="nav-label">O vosso mundo</p>
           <a class="nav-item {% if current_section == 'attire' %}is-active{% endif %}" href="/attire"><span class="nav-icon">◇</span>Roupa</a>
@@ -42,6 +41,7 @@
           <a class="nav-item {% if current_section == 'home' %}is-active{% endif %}" href="/home"><span class="nav-icon">⌂</span>Casa</a>
           <a class="nav-item {% if current_section == 'gifts' %}is-active{% endif %}" href="/gifts"><span class="nav-icon">♢</span>Presentes</a>
           <a class="nav-item {% if current_section == 'documents' %}is-active{% endif %}" href="/documents"><span class="nav-icon">▤</span>Documentos</a>
+          <a class="nav-item {% if current_section == 'moodboard' %}is-active{% endif %}" href="/moodboard"><span class="nav-icon">✿</span>Moodboard</a>
           <a class="nav-item {% if current_section == 'communication' %}is-active{% endif %}" href="/communication"><span class="nav-icon">✎</span>Comunicação</a>
         </nav>
 
@@ -60,7 +60,7 @@
           <button class="menu-button" aria-label="Abrir menu">☰</button>
           <div class="breadcrumb"><span>LV</span><i>/</i><strong>Visão geral</strong></div>
           <div class="header-actions">
-            <a class="icon-button" href="/communication" aria-label="Pesquisar">⌕</a>
+            <a class="icon-button" href="/moodboard" aria-label="Pesquisar inspirações">⌕</a>
             <a class="icon-button notification" href="/communication" aria-label="Atividade e comunicação">✦</a>
             <details class="account-menu"><summary class="header-avatar" aria-label="Menu de conta">{{ request.session.get('user_name', 'LV')[:2]|upper }}</summary><div><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><a href="/account/password">Alterar password</a><form action="/logout" method="post"><button>Terminar sessão</button></form></div></details>
           </div>

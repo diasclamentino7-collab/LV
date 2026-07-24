@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from app.core.config import PROJECT_ROOT, get_settings
 from app.db.session import SessionLocal
 from app.models.core import Activity, ProjectSettings, User
+from app.models.moodboard import MoodboardItem
 from app.models.planning import BudgetCategory, Guest, Task
 from app.services.finance import financial_summary
 
@@ -94,6 +95,12 @@ def home(request: Request) -> Response:
         configured_budget = settings.total_budget if settings and settings.total_budget else "0"
         finance = financial_summary(db, Decimal(configured_budget))
         users = db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.name)).all()
+        moodboard_items = db.scalars(
+            select(MoodboardItem)
+            .where(MoodboardItem.is_archived.is_(False))
+            .order_by(MoodboardItem.updated_at.desc())
+            .limit(4)
+        ).all()
         countdown = None
         if settings and settings.wedding_date:
             target = settings.wedding_date
@@ -116,5 +123,6 @@ def home(request: Request) -> Response:
             "countdown": countdown,
             "couple_names": " e ".join(user.name for user in users),
             "finance": finance,
+            "moodboard_items": moodboard_items,
         },
     )

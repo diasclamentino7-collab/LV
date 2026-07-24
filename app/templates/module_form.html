@@ -1,3 +1,24 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Editar' if record else 'Adicionar' }} {{ module.title }} · {{ app_name }}{% endblock %}
-{% block content %}<section class="page-intro"><div><p class="eyebrow">{{ module.title }}</p><h1>{{ 'Editar registo' if record else 'Novo registo' }}</h1><p class="intro-copy">{{ 'As alterações são guardadas automaticamente.' if record else 'Criem o registo para ativar a gravação automática.' }}</p></div><a class="secondary-button" href="/{{ module.slug }}">Cancelar</a></section><form method="post" class="card form-grid record-form" {% if record %}data-autosave{% endif %}>{% for field in module.fields %}<label>{{ field.label }}{% set value = record|attr(field.name) if record else '' %}{% if field.kind == 'textarea' %}<textarea name="{{ field.name }}">{{ value or '' }}</textarea>{% elif field.kind == 'select' %}<select name="{{ field.name }}">{% for option in field.options %}<option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option or '—' }}</option>{% endfor %}</select>{% else %}<input name="{{ field.name }}" type="{{ field.kind }}" value="{{ value or '' }}" {% if field.kind == 'number' %}step="0.01" min="0"{% endif %} {% if loop.first %}required{% endif %}>{% endif %}</label>{% endfor %}<div class="form-actions"><span class="autosave-status">{{ 'Gravação automática ativa' if record else 'Guardar para criar' }}</span><button class="primary-button" type="submit">Guardar alterações</button></div></form>{% if record %}<script>const form=document.querySelector('[data-autosave]');let timer;form.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>form.requestSubmit(),900)});form.addEventListener('change',()=>form.requestSubmit());</script>{% endif %}{% endblock %}
+{% block content %}
+<section class="page-intro">
+  <div><p class="eyebrow">{{ module.title }}</p><h1>{{ 'Editar registo' if record else 'Novo registo' }}</h1><p class="intro-copy">Preencham os dados e guardem quando estiverem prontos.</p></div>
+  <a class="secondary-button" href="/{{ module.slug }}">Cancelar</a>
+</section>
+{% if request.query_params.get('error') %}<div class="form-error">Não foi possível guardar. Verifiquem os campos e confirmem que não existe outro registo com o mesmo nome.</div>{% endif %}
+<form method="post" class="card form-grid record-form">
+  {% for field in module.fields %}
+  {% set value = record|attr(field.name) if record else '' %}
+  {% if value and field.kind == 'datetime-local' %}{% set value = value.strftime('%Y-%m-%dT%H:%M') %}{% endif %}
+  <label>{{ field.label }}
+    {% if field.kind == 'textarea' %}<textarea name="{{ field.name }}">{{ value or '' }}</textarea>
+    {% elif field.kind == 'category' %}{% if categories %}<select name="{{ field.name }}" required><option value="">Escolher categoria</option>{% for item in categories %}<option value="{{ item.id }}" {% if value == item.id %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select>{% else %}<a class="secondary-button" href="/budget/new">Criar primeiro uma categoria</a>{% endif %}
+    {% elif field.kind == 'vendor' %}<select name="{{ field.name }}"><option value="">Sem fornecedor</option>{% for item in vendors %}<option value="{{ item.id }}" {% if value == item.id %}selected{% endif %}>{{ item.company }}</option>{% endfor %}</select>
+    {% elif field.kind == 'select' %}<select name="{{ field.name }}">{% for option in field.options %}<option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option or '—' }}</option>{% endfor %}</select>
+    {% else %}<input name="{{ field.name }}" type="{{ field.kind }}" value="{{ value or '' }}" {% if field.kind == 'number' %}step="0.01" min="0"{% endif %} {% if loop.first or field.required %}required{% endif %}>
+    {% endif %}
+  </label>
+  {% endfor %}
+  <div class="form-actions"><span>Os dados são guardados diretamente na base de dados.</span><button class="primary-button" type="submit">Guardar alterações</button></div>
+</form>
+{% endblock %}

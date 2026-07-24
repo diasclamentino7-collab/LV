@@ -16,7 +16,7 @@
 
   <section class="metric-grid" aria-label="Resumo do casamento">
     <article class="metric-card"><span class="metric-icon blush">♡</span><div><p>Convidados</p><strong>{{ stats.guests }} <small>registados</small></strong></div><a class="metric-arrow" href="/guests">↗</a></article>
-    <article class="metric-card"><span class="metric-icon gold">◈</span><div><p>Orçamento utilizado</p><strong>{{ finance.percentage }}% <small>{{ finance.categories }} categorias</small></strong></div><a class="metric-arrow" href="/budget">↗</a></article>
+    <article class="metric-card"><span class="metric-icon gold">◈</span><div><p>Planeado nas categorias</p><strong>€{{ '%.2f'|format(finance.allocated) }} <small>{{ finance.categories }} categorias</small></strong></div><a class="metric-arrow" href="/budget">↗</a></article>
     <article class="metric-card"><span class="metric-icon sand">✓</span><div><p>Checklist</p><strong>{{ stats.tasks }} <small>tarefas</small></strong></div><a class="metric-arrow" href="/checklist">↗</a></article>
   </section>
 
@@ -26,13 +26,13 @@
     {% endcall %}
 
     {% call card('Visão do orçamento', 'Acompanhem cada escolha com leveza.', 'budget-card') %}
-      <div class="budget-total"><span>Total planeado</span><strong>€{{ '%.2f'|format(finance.paid) }}</strong><small>de €{{ '%.2f'|format(finance.total) }}</small></div>
-      {{ progress('Disponível', '€' ~ ('%.2f'|format(finance.remaining)), 100 - finance.percentage, 'gold') }}
-      <a class="card-link" href="/payments">Ver pagamentos <span>→</span></a>
+      <div class="budget-total"><span>Despesas atuais</span><strong>€{{ '%.2f'|format(finance.expenses) }}</strong><small>de €{{ '%.2f'|format(finance.total) }} · €{{ '%.2f'|format(finance.allocated) }} planeados</small></div>
+      {{ progress('Orçamento utilizado', finance.percentage ~ '%', finance.progress_percentage, 'gold') }}
+      <a class="card-link" href="/budget">Gerir orçamento <span>→</span></a>
     {% endcall %}
   </section>
 
   {% call card('Inspiração para o vosso dia', 'Guardem ideias que contam a vossa história.', 'inspiration-card') %}
-    <div class="inspiration-layout"><div class="inspiration-art"><span>✿</span><span>⌇</span><span>♡</span></div><div><h3>O vosso moodboard espera por vocês</h3><p>Criem uma coleção de cores, detalhes e momentos que vão tornar este dia só vosso.</p><button class="secondary-button">Começar a explorar</button></div></div>
+    <div class="inspiration-layout">{% if moodboard_items %}<div class="dashboard-moodboard">{% for item in moodboard_items %}<img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy">{% endfor %}</div>{% else %}<div class="inspiration-art"><span>✿</span><span>⌇</span><span>♡</span></div>{% endif %}<div><h3>{{ moodboard_items|length }} inspirações guardadas</h3><p>Criem uma coleção de cores, detalhes e momentos que vão tornar este dia só vosso.</p><a class="secondary-button" href="/moodboard">Abrir moodboard</a></div></div>
   {% endcall %}
 {% endblock %}
