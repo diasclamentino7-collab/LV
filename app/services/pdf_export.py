@@ -7,6 +7,7 @@ rendering dependencies in the free Render deployment.
 
 from __future__ import annotations
 
+import json
 import re
 import textwrap
 from collections.abc import Iterable, Mapping, Sequence
@@ -18,7 +19,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.core import User
+from app.models.core import RecordTombstone, User
 from app.models.moodboard import (
     MoodboardBoard,
     MoodboardCollection,
@@ -27,6 +28,7 @@ from app.models.moodboard import (
 from app.models.planning import BudgetCategory, Expense, Vendor
 from app.repositories.project_settings import get_project_settings
 from app.services.data_export import EXPORT_MODELS, serialize_record
+from app.services.record_deletion import REUSABLE_UNIQUE_FIELDS
 
 PAGE_WIDTH = 595
 PAGE_HEIGHT = 842
@@ -601,12 +603,49 @@ def render_pdf_report(
     return flow.build()
 
 
-def _reference_names(db: Session) -> dict[str, dict[int, str]]:
+def _tombstone_snapshots(db: Session) -> dict[tuple[str, int], dict[str, Any]]:
+    """Load original values used only to keep human-readable PDFs clean."""
+
+    snapshots: dict[tuple[str, int], dict[str, Any]] = {}
+    for tombstone in db.scalars(select(RecordTombstone)).all():
+        try:
+            snapshot = json.loads(tombstone.snapshot_json)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if isinstance(snapshot, dict):
+            snapshots[(tombstone.entity_type, tombstone.entity_id)] = snapshot
+    return snapshots
+
+
+def _serialize_for_report(
+    record: Any,
+    tombstone_snapshots: Mapping[tuple[str, int], Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Use original business labels while retaining the technical source row."""
+
+    serialized = serialize_record(record)
+    table_name = str(record.__table__.name)
+    original = tombstone_snapshots.get((table_name, record.id), {})
+    for field_name in REUSABLE_UNIQUE_FIELDS.get(table_name, ()):
+        if field_name in original:
+            serialized[field_name] = original[field_name]
+    return serialized
+
+
+def _reference_names(
+    db: Session,
+    tombstone_snapshots: Mapping[tuple[str, int], Mapping[str, Any]],
+) -> dict[str, dict[int, str]]:
     """Resolve foreign keys to the labels people use in the interface."""
 
     return {
         field: {
-            record.id: str(getattr(record, label_field))
+            record.id: str(
+                tombstone_snapshots.get(
+                    (str(model.__table__.name), record.id),
+                    {},
+                ).get(label_field, getattr(record, label_field))
+            )
             for record in db.scalars(select(model).order_by(model.id)).all()
         }
         for field, (model, label_field) in REFERENCE_MODELS.items()
@@ -621,10 +660,14 @@ def build_full_pdf(db: Session) -> bytes:
     currency = settings.currency if settings is not None else "EUR"
     users = db.scalars(select(User).order_by(User.id)).all()
     user_names = {user.id: user.name for user in users}
+    tombstone_snapshots = _tombstone_snapshots(db)
     sections = [
         ReportSection(
             SECTION_TITLES.get(model.__tablename__, model.__tablename__.replace("_", " ").title()),
-            [serialize_record(record) for record in db.scalars(select(model)).all()],
+            [
+                _serialize_for_report(record, tombstone_snapshots)
+                for record in db.scalars(select(model)).all()
+            ],
         )
         for model in EXPORT_MODELS
     ]
@@ -634,7 +677,7 @@ def build_full_pdf(db: Session) -> bytes:
         sections=sections,
         currency=currency,
         user_names=user_names,
-        reference_names=_reference_names(db),
+        reference_names=_reference_names(db, tombstone_snapshots),
     )
 
 
@@ -651,6 +694,7 @@ def build_module_pdf(
     project_name = settings.project_name if settings is not None else "LV - Wedding Planner"
     currency = settings.currency if settings is not None else "EUR"
     users = db.scalars(select(User).order_by(User.id)).all()
+    tombstone_snapshots = _tombstone_snapshots(db)
     section_title = f"{title} · {'Eliminados' if archived else 'Ativos'}"
     return render_pdf_report(
         title=f"Relatório · {title}",
@@ -663,5 +707,5 @@ def build_module_pdf(
         ],
         currency=currency,
         user_names={user.id: user.name for user in users},
-        reference_names=_reference_names(db),
+        reference_names=_reference_names(db, tombstone_snapshots),
     )

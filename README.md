@@ -102,7 +102,9 @@ Os registos eliminados ficam inicialmente recuperáveis. Em `/deleted`, ou na
 vista de eliminados de cada módulo, podem ser recuperados ou removidos
 definitivamente da interface após escrever `APAGAR`. A remoção definitiva cria
 uma marca e um snapshot técnico de auditoria, sem apagar fisicamente a linha ou
-quebrar despesas, pagamentos e outras relações existentes.
+quebrar despesas, pagamentos e outras relações existentes. Identificadores
+únicos de negócio, como o nome de uma categoria do orçamento, são libertados
+nessa operação e podem ser utilizados imediatamente num novo registo.
 
 O histórico em `/activity` identifica utilizador, data/hora, módulo, ação e
 descrição, com filtros combináveis. É apenas de leitura e mostra até 250

@@ -15,6 +15,7 @@ from app.db.base import Base
 from app.main import app
 from app.models.core import Activity, ProjectSettings, RecordTombstone, User
 from app.models.planning import BudgetCategory, Expense
+from app.services.pdf_export import build_full_pdf
 from app.services.security import hash_password
 
 
@@ -205,11 +206,26 @@ def test_budget_view_uses_real_totals_and_preserves_archived_categories(
         )
         assert restore_rejected.status_code == 303
 
+        recreate_page = client.get("/budget/new")
+        recreated = client.post(
+            "/budget/new",
+            data={
+                "name": "Flores",
+                "planned_limit": "725.00",
+                "csrf_token": csrf_from(recreate_page),
+            },
+            follow_redirects=False,
+        )
+        assert recreated.status_code == 303
+        assert recreated.headers["location"] == "/budget?message=created"
+        assert "Flores" in client.get("/budget").text
+
     with Session(engine) as db:
-        preserved = db.scalar(select(BudgetCategory).where(BudgetCategory.name == "Flores"))
+        preserved = db.get(BudgetCategory, flowers["id"])
         assert preserved is not None
         assert preserved.is_archived is True
         assert preserved.planned_limit == Decimal("600.00")
+        assert preserved.name.startswith("__lv_deleted_budget_categories_")
         tombstone = db.scalar(
             select(RecordTombstone).where(
                 RecordTombstone.entity_type == "budget_categories",
@@ -220,3 +236,15 @@ def test_budget_view_uses_real_totals_and_preserves_archived_categories(
         assert '"name": "Flores"' in tombstone.snapshot_json
         assert tombstone.deleted_by_id == user_id
         assert db.scalar(select(Activity).where(Activity.action_type == "eliminou definitivamente"))
+        replacement = db.scalar(
+            select(BudgetCategory).where(
+                BudgetCategory.name == "Flores",
+                BudgetCategory.is_archived.is_(False),
+            )
+        )
+        assert replacement is not None
+        assert replacement.id != preserved.id
+        assert replacement.planned_limit == Decimal("725.00")
+        pdf = build_full_pdf(db)
+        assert b"__lv_deleted_budget_categories_" not in pdf
+        assert b"Flores" in pdf
