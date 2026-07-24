@@ -85,6 +85,7 @@ Em `/settings` é possível gerir, por secções independentes:
 - orçamento, moeda e percentagem de alerta;
 - cores aplicadas em toda a interface;
 - responsável e prioridade predefinidos, lembretes e blocos do dashboard;
+- intensidade de movimento: completa, reduzida ou sem animações;
 - colaboradores, alteração de password, instalação PWA e exportação JSON;
 - proteção contra alterações concorrentes, aviso de moeda sem conversão e
   confirmação antes de abandonar formulários por guardar.
@@ -103,6 +104,44 @@ sessão. As passwords são guardadas apenas como hashes e as respostas incluem
 políticas de segurança para conteúdo, frames, permissões e HTTPS.
 Cinco tentativas de login sem sucesso bloqueiam temporariamente a conta. Alterar
 a password revoga também as sessões anteriores, incluindo noutros dispositivos.
+
+## Motion design e utilização diária
+
+A interface inclui um sistema central, leve e sem bibliotecas externas para
+transições de página, entrada progressiva de listas, números, barras de
+progresso, cartões com profundidade subtil, microinterações, modais e mensagens.
+Os efeitos utilizam `transform`, `opacity`, `requestAnimationFrame` e
+`IntersectionObserver`; o parallax é automaticamente desligado em ecrãs táteis,
+modo de poupança de dados e dispositivos mais limitados.
+
+A preferência **Reduzir movimento** do sistema operativo tem sempre prioridade.
+Mesmo que seja escolhido movimento completo nas Configurações, a aplicação
+reduz os efeitos quando `prefers-reduced-motion` está ativo. Com **Sem
+animações**, todas as páginas e ações continuam completamente funcionais.
+
+O Dashboard consulta periodicamente um resumo autenticado e sem cache. Quando
+outra pessoa altera convidados, checklist, orçamento ou data do casamento,
+apenas os valores afetados são atualizados e destacados; não são usados valores
+fictícios e a página não precisa de ser recarregada. A contagem decrescente é
+calculada no fuso horário definido nas Configurações e atualiza também os
+segundos.
+
+A visão de Orçamento usa a mesma fonte financeira do Dashboard e mostra total,
+despesas atuais, restante, limites planeados e utilização por categoria. Os
+gráficos são construídos apenas com despesas persistidas. A página reconcilia
+alterações a cada 12 segundos e também ao regressar ao separador; separadores
+abertos no mesmo dispositivo recebem ainda um sinal imediato, sem substituir a
+base de dados por armazenamento local.
+
+O ícone superior direito abre o Centro de Comunicação como painel lateral. A
+pesquisa e a criação rápida de notas, ideias, decisões, lembretes e tarefas
+guardam diretamente na base de dados, com autoria e atividade. A página completa
+continua disponível em `/communication`.
+
+O Moodboard dispõe de galeria, favoritos, pré-visualização acessível e da vista
+**Mesa de Inspiração**. Posições, rotações e camadas são persistidas numa tabela
+própria; podem ser alteradas com rato, toque ou teclado e nunca ficam apenas na
+memória do navegador.
 
 ## Migrações e preservação de dados
 

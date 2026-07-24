@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-PT">
+<html lang="pt-PT" data-motion="{{ ui_settings.motion_preference|default('full') if ui_settings is defined else 'full' }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,6 +15,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/motion.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/communication-drawer.css') }}">
+    {% block styles %}{% endblock %}
+    <script src="{{ url_for('static', path='js/motion.js') }}" defer></script>
+    <script src="{{ url_for('static', path='js/app.js') }}" defer></script>
     {% if theme is defined %}<style>:root{--primary:{{ theme.primary }};--primary-soft:{{ theme.secondary }};--accent:{{ theme.accent }};--background:{{ theme.background }};{% if theme.on_primary is defined %}--on-primary:{{ theme.on_primary }};{% endif %}}</style>{% endif %}
   </head>
   <body>
@@ -56,11 +61,10 @@
         </nav>
 
         <div class="sidebar-footer">
-          <a class="nav-item {% if current_section == 'settings' %}is-active{% endif %}" href="/settings"><span class="nav-icon">⚙</span>Configurações</a>
           <div class="profile-card">
             <span class="avatar">LV</span>
             <span><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><small>Em sessão</small></span>
-            <a class="more" href="/settings" aria-label="Configurações">•••</a>
+            <a class="more" href="/settings" aria-label="Abrir Configurações" title="Configurações">•••</a>
           </div>
         </div>
       </aside>
@@ -72,14 +76,15 @@
           {% set section_titles = {'dashboard': 'Visão geral', 'checklist': 'Checklist', 'timeline': 'Cronograma', 'budget': 'Orçamento', 'payments': 'Pagamentos', 'expenses': 'Despesas', 'vendors': 'Fornecedores', 'guests': 'Convidados', 'table-plan': 'Plano de Mesas', 'kingdom-hall': 'Salão do Reino', 'reception': 'Copo de Água', 'legal-process': 'Processo Legal', 'attire': 'Roupa', 'honeymoon': 'Lua de Mel', 'home': 'Casa', 'gifts': 'Presentes', 'documents': 'Documentos', 'moodboard': 'Moodboard', 'communication': 'Comunicação', 'activity': 'Atividade', 'settings': 'Configurações'} %}
           <div class="breadcrumb"><a href="/dashboard">LV</a><i>/</i><strong>{{ section_titles.get(current_section, 'Visão geral') }}</strong></div>
           <div class="header-actions">
-            <a class="icon-button" href="/moodboard" aria-label="Pesquisar inspirações">⌕</a>
-            <a class="icon-button notification" href="/activity" aria-label="Abrir histórico de atividade">✦</a>
+            <a class="icon-button" href="/moodboard" aria-label="Pesquisar inspirações"><span data-motion-icon>⌕</span></a>
+            <button class="icon-button notification" type="button" data-motion-action="communication" data-communication-trigger aria-haspopup="dialog" aria-controls="communication-drawer" aria-label="Abrir centro de comunicação"><span data-motion-icon>✦</span></button>
             <details class="account-menu"><summary class="header-avatar" aria-label="Menu de conta">{{ request.session.get('user_name', 'LV')[:2]|upper }}</summary><div><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><a href="/account/password">Alterar password</a><form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Terminar sessão</button></form></div></details>
           </div>
         </header>
-        <main class="content" id="main-content" tabindex="-1">{% block content %}{% endblock %}</main>
+        <main class="content" id="main-content" tabindex="-1" data-motion-page>{% block content %}{% endblock %}</main>
       </div>
     </div>
+    {% include "_communication_drawer.html" %}
     <script>
       if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js");
       const menuButton = document.querySelector(".menu-button");

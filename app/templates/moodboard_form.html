@@ -1,3 +1,132 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Editar' if item else 'Nova' }} inspiração · {{ display_app_name|default(app_name) }}{% endblock %}
-{% block content %}<section class="page-intro"><div><p class="eyebrow">Moodboard</p><h1>{{ 'Editar inspiração' if item else 'Nova inspiração' }}</h1><p class="intro-copy">Usem um endereço direto e público de imagem.</p></div><a class="secondary-button" href="/moodboard">Cancelar</a></section>{% if request.query_params.get('error') %}<div class="form-error">Não foi possível guardar. Recarreguem a página e confirmem os URLs.</div>{% endif %}<form method="post" class="card form-grid record-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Título<input name="title" value="{{ item.title if item else '' }}" required></label><label>Coleção<select name="collection_id" required>{% for collection in collections %}<option value="{{ collection.id }}" {% if item and item.collection_id == collection.id %}selected{% endif %}>{{ collection.name }}</option>{% endfor %}</select></label><label>URL direto da imagem<input type="url" name="image_url" value="{{ item.image_url if item else '' }}" placeholder="https://.../imagem.jpg" required></label><label>URL da referência<input type="url" name="source_url" value="{{ item.source_url if item else '' }}" placeholder="https://..."></label><label>Etiquetas<input name="tags" value="{{ item.tags if item else '' }}" placeholder="flores, rosa, cerimónia"></label><label>Notas<textarea name="notes">{{ item.notes if item else '' }}</textarea></label><div class="form-actions"><span>Os URLs e metadados ficam guardados na base de dados.</span><button class="primary-button">Guardar inspiração</button></div></form>{% endblock %}
+{% block title %}{{ "Editar" if item else "Nova" }} inspiração · {{ display_app_name|default(app_name) }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/moodboard-motion.css') }}">
+{% endblock %}
+{% block content %}
+<div class="moodboard-page moodboard-editor" data-moodboard-form>
+  <section class="page-intro">
+    <div>
+      <p class="eyebrow">Moodboard</p>
+      <h1>{{ "Editar inspiração" if item else "Nova inspiração" }}</h1>
+      <p class="intro-copy">
+        Guardem a imagem, a origem e as notas que vão orientar as vossas decisões.
+      </p>
+    </div>
+    <a class="secondary-button" href="/moodboard">Cancelar</a>
+  </section>
+
+  {% if request.query_params.get("error") %}
+  <div class="form-error" role="alert">
+    {% if request.query_params.get("error") == "collection" %}
+      A coleção deixou de estar disponível. Escolham outra coleção.
+    {% elif request.query_params.get("error") == "csrf" %}
+      A sessão de segurança expirou. Recarreguem esta página.
+    {% else %}
+      Confirmem o título, os limites de texto e os endereços públicos da imagem e da fonte.
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="moodboard-editor-layout">
+    <form method="post" class="card form-grid record-form moodboard-record-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>
+        Título
+        <input
+          name="title"
+          value="{{ item.title if item else '' }}"
+          maxlength="200"
+          autocomplete="off"
+          required
+        >
+      </label>
+      <label>
+        Coleção
+        <select name="collection_id" required>
+          {% for collection in collections %}
+          <option
+            value="{{ collection.id }}"
+            {% if item and item.collection_id == collection.id %}selected{% endif %}
+          >{{ collection.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="moodboard-wide-field">
+        URL direto da imagem
+        <input
+          type="url"
+          name="image_url"
+          value="{{ item.image_url if item else '' }}"
+          placeholder="https://.../imagem.jpg"
+          maxlength="1000"
+          data-image-url
+          required
+        >
+        <small>Utilizem um endereço público HTTPS que termine numa imagem sempre que possível.</small>
+      </label>
+      <label class="moodboard-wide-field">
+        URL da referência
+        <input
+          type="url"
+          name="source_url"
+          value="{{ item.source_url if item else '' }}"
+          placeholder="https://..."
+          maxlength="1000"
+        >
+      </label>
+      <label>
+        Etiquetas
+        <input
+          name="tags"
+          value="{{ item.tags if item else '' }}"
+          placeholder="flores, rosa, cerimónia"
+          maxlength="300"
+        >
+      </label>
+      <label class="moodboard-wide-field">
+        Notas
+        <textarea
+          name="notes"
+          maxlength="10000"
+          placeholder="O que vos inspira nesta referência?"
+        >{{ item.notes if item else "" }}</textarea>
+      </label>
+      <div class="form-actions moodboard-wide-field">
+        <span>URLs, metadados e alterações ficam guardados diretamente na base de dados.</span>
+        <button class="primary-button" type="submit">
+          <span aria-hidden="true">✓</span> Guardar inspiração
+        </button>
+      </div>
+    </form>
+
+    <aside class="moodboard-form-preview" aria-labelledby="moodboard-preview-title">
+      <p class="eyebrow">Pré-visualização</p>
+      <h2 id="moodboard-preview-title">Assim ficará na galeria</h2>
+      <div class="moodboard-form-polaroid">
+        <div>
+          <img
+            src="{{ item.image_url if item else '' }}"
+            alt=""
+            loading="lazy"
+            decoding="async"
+            data-form-preview-image
+            {% if not item %}hidden{% endif %}
+          >
+          <span data-form-preview-placeholder {% if item %}hidden{% endif %}>
+            A imagem aparece aqui
+          </span>
+        </div>
+        <p data-form-preview-caption>{{ item.title if item else "A vossa inspiração" }}</p>
+      </div>
+      <p class="moodboard-form-tip">
+        Dica: adicionem etiquetas consistentes para encontrarem rapidamente paletas,
+        flores, roupa ou decoração.
+      </p>
+    </aside>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', path='js/moodboard.js') }}" defer></script>
+{% endblock %}

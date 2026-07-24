@@ -39,6 +39,7 @@ WeddingStyle = Literal[
     "Personalizado",
 ]
 TaskPriority = Literal["Baixa", "Média", "Alta", "Urgente"]
+MotionPreference = Literal["full", "reduced", "none"]
 
 
 def relative_luminance(hex_color: str) -> float:
@@ -157,6 +158,7 @@ class PlanningSettings(SettingsSection):
     dashboard_show_finance: bool = True
     dashboard_show_activity: bool = True
     dashboard_show_moodboard: bool = True
+    motion_preference: MotionPreference = "full"
     settings_version: int = Field(default=1, ge=1, le=2_147_483_647)
 
 
@@ -177,6 +179,7 @@ __all__ = [
     "FinanceSettings",
     "IdentitySettings",
     "Language",
+    "MotionPreference",
     "PlanningSettings",
     "ProjectSettingsUpdate",
     "TaskPriority",

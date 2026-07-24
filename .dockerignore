@@ -10,5 +10,6 @@ __pycache__
 data/*.db
 uploads/*
 backups/*
+code/
 !uploads/.gitkeep
 !backups/.gitkeep

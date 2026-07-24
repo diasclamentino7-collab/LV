@@ -76,11 +76,21 @@ def test_settings_save_is_audited_and_stale_forms_are_rejected(monkeypatch) -> N
         assert dashboard.status_code == 200
         assert "Próximas tarefas" in dashboard.text
         assert 'aria-controls="main-navigation"' in dashboard.text
+        assert "/static/css/motion.css" in dashboard.text
+        assert "/static/js/motion.js" in dashboard.text
+        assert "/static/js/app.js" in dashboard.text
+        assert "data-communication-trigger" in dashboard.text
+        assert 'data-motion-tilt="2.4"' in dashboard.text
+        assert 'href="/settings" aria-label="Abrir Configurações"' in dashboard.text
+        assert "current_section == 'settings'" not in dashboard.text
 
         page = client.get("/settings")
         assert page.status_code == 200
         assert "Identidade do casamento" in page.text
         assert "Exportar dados" in page.text
+        assert "Movimento completo" in page.text
+        assert "Movimento reduzido" in page.text
+        assert "Sem animações" in page.text
         csrf_token = re.search(
             r'name="csrf_token" value="([^"]+)"',
             page.text,
@@ -156,11 +166,40 @@ def test_settings_save_is_audited_and_stale_forms_are_rejected(monkeypatch) -> N
         )
         assert currency_saved.headers["location"].startswith("/settings?saved=finance")
 
+        motion_saved = client.post(
+            "/settings/planning",
+            data={
+                "csrf_token": csrf_token,
+                "settings_version": "3",
+                "language": "pt-PT",
+                "reminder_days_before": "7",
+                "reminders_enabled": "true",
+                "default_assignee": "Vítor",
+                "default_task_priority": "Média",
+                "motion_preference": "reduced",
+                "dashboard_show_countdown": "true",
+                "dashboard_show_finance": "true",
+                "dashboard_show_activity": "true",
+                "dashboard_show_moodboard": "true",
+            },
+            follow_redirects=False,
+        )
+        assert motion_saved.headers["location"].startswith("/settings?saved=planning")
+
+        reduced_dashboard = client.get("/dashboard")
+        assert 'data-motion="reduced"' in reduced_dashboard.text
+
         history = client.get(f"/activity?module=settings&user_id={user_id}")
         assert history.status_code == 200
         assert "Histórico de atividade" in history.text
         assert "Vítor" in history.text
         assert "atualizou as configurações de finance" in history.text
+
+        live_summary = client.get("/api/dashboard-summary")
+        assert live_summary.status_code == 200
+        assert live_summary.json()["categories"] == 1
+        assert live_summary.json()["activities"][0]["user_name"] == "Vítor"
+        assert live_summary.headers["cache-control"].startswith("private, no-store")
 
         exported = client.get("/settings/export")
         assert exported.status_code == 200
@@ -195,6 +234,7 @@ def test_settings_save_is_audited_and_stale_forms_are_rejected(monkeypatch) -> N
     assert settings is not None
     assert settings.project_name == "O nosso casamento"
     assert settings.currency == "USD"
-    assert settings.settings_version == 3
-    assert activity_count == 2
+    assert settings.motion_preference == "reduced"
+    assert settings.settings_version == 4
+    assert activity_count == 3
     assert task_count == 1

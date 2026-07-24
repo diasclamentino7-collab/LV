@@ -91,4 +91,5 @@ class ProjectSettings(TimestampedModel, Base):
     dashboard_show_finance: Mapped[bool] = mapped_column(Boolean, default=True)
     dashboard_show_activity: Mapped[bool] = mapped_column(Boolean, default=True)
     dashboard_show_moodboard: Mapped[bool] = mapped_column(Boolean, default=True)
+    motion_preference: Mapped[str] = mapped_column(String(20), default="full")
     settings_version: Mapped[int] = mapped_column(Integer, default=1)

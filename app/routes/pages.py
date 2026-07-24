@@ -8,7 +8,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from sqlalchemy import Select, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -18,8 +18,10 @@ from app.core.templating import templates
 from app.db.session import SessionLocal
 from app.models.core import WorkspaceRecord
 from app.models.planning import BudgetCategory, Expense, Guest, LegalDocument, Payment, Task, Vendor
+from app.repositories.project_settings import get_project_settings
 from app.services.activity import record_activity
 from app.services.auth_session import authenticated_user
+from app.services.budget import budget_snapshot, serialize_budget_snapshot
 from app.services.csrf import valid_csrf_token
 
 router = APIRouter()
@@ -351,6 +353,33 @@ def legacy_quinta_page() -> RedirectResponse:
     return RedirectResponse("/reception", status_code=308)
 
 
+@router.get("/api/budget-summary", include_in_schema=False)
+def budget_summary_api(request: Request, q: str = "") -> JSONResponse:
+    """Return current persisted budget values for lightweight live updates."""
+
+    search = q.strip()[:100]
+    with SessionLocal() as db:
+        user = authenticated_user(db, request)
+        if user is None:
+            return JSONResponse(
+                {"detail": "Sessão não autenticada."},
+                status_code=401,
+                headers={"Cache-Control": "no-store"},
+            )
+        settings = get_project_settings(db, user_id=user.id)
+        total_budget = settings.total_budget if settings is not None else "0"
+        currency = settings.currency if settings is not None else "EUR"
+        snapshot = budget_snapshot(db, total_budget, search=search)
+        payload = serialize_budget_snapshot(snapshot, currency=currency)
+    return JSONResponse(
+        payload,
+        headers={
+            "Cache-Control": "private, no-store, max-age=0",
+            "Pragma": "no-cache",
+        },
+    )
+
+
 @router.get("/{slug}", response_class=HTMLResponse, include_in_schema=False)
 def module_page(request: Request, slug: str, q: str = "", archived: bool = False) -> Response:
     if redirect := require_login(request):
@@ -358,12 +387,24 @@ def module_page(request: Request, slug: str, q: str = "", archived: bool = False
     spec = MODULES.get(slug)
     if spec is None:
         return RedirectResponse("/dashboard", status_code=303)
+    q = q.strip()[:100]
     with SessionLocal() as db:
         records = db.scalars(module_query(spec, q, archived)).all()
         record_labels = {record.id: record_label(record) for record in records}
+        budget_data = None
+        if slug == "budget" and not archived:
+            settings = get_project_settings(
+                db,
+                user_id=logged_user_id(request),
+            )
+            budget_data = budget_snapshot(
+                db,
+                settings.total_budget if settings is not None else "0",
+                search=q,
+            )
     return templates.TemplateResponse(
         request,
-        "module_list.html",
+        "budget.html" if slug == "budget" else "module_list.html",
         {
             "app_name": get_settings().app_name,
             "current_section": slug,
@@ -374,6 +415,7 @@ def module_page(request: Request, slug: str, q: str = "", archived: bool = False
             "message": request.query_params.get("message"),
             "error": request.query_params.get("error"),
             "show_archived": archived,
+            "budget_data": budget_data,
         },
     )
 

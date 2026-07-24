@@ -1,0 +1,113 @@
+<dialog
+  class="communication-dialog"
+  id="communication-drawer"
+  aria-labelledby="communication-drawer-title"
+  aria-describedby="communication-drawer-description"
+  aria-modal="true"
+  data-motion-preference="{{ ui_settings.motion_preference|default('full') if ui_settings is defined else 'full' }}"
+>
+  <section class="communication-panel">
+    <header class="communication-heading">
+      <div>
+        <p class="communication-eyebrow">Centro partilhado</p>
+        <h2 id="communication-drawer-title">Comunicação</h2>
+        <p id="communication-drawer-description">
+          Ideias, decisões e lembretes guardados para os dois.
+        </p>
+      </div>
+      <button
+        class="communication-close"
+        type="button"
+        data-communication-close
+        aria-label="Fechar centro de comunicação"
+      >×</button>
+    </header>
+
+    <form class="communication-search" role="search" data-communication-search>
+      <label for="communication-search-input">Pesquisar na comunicação</label>
+      <div>
+        <span aria-hidden="true">⌕</span>
+        <input
+          id="communication-search-input"
+          name="q"
+          type="search"
+          maxlength="100"
+          placeholder="Pesquisar notas, ideias ou responsáveis…"
+          autocomplete="off"
+        >
+      </div>
+    </form>
+
+    <details class="communication-compose">
+      <summary>Adicionar rapidamente <span aria-hidden="true">＋</span></summary>
+      <form data-communication-create>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="communication-form-row">
+          <label>
+            <span>Tipo</span>
+            <select name="category">
+              <option>Nota</option>
+              <option>Ideia</option>
+              <option>Decisão</option>
+              <option>Lembrete</option>
+              <option>Tarefa rápida</option>
+            </select>
+          </label>
+          <label>
+            <span>Prioridade</span>
+            <select name="priority">
+              <option>Baixa</option>
+              <option selected>Média</option>
+              <option>Alta</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          <span>Título</span>
+          <input name="title" maxlength="200" required placeholder="O que querem registar?">
+        </label>
+        <label>
+          <span>Descrição <small>opcional</small></span>
+          <textarea name="description" maxlength="5000" rows="3"></textarea>
+        </label>
+        <div class="communication-form-row">
+          <label>
+            <span>Responsável</span>
+            <input name="responsible" maxlength="100" placeholder="Vítor, Leonor ou ambos">
+          </label>
+          <label>
+            <span>Data</span>
+            <input name="event_date" type="date">
+          </label>
+        </div>
+        <button class="communication-save" type="submit">
+          <span data-communication-save-label>Guardar</span>
+          <span class="communication-spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+    </details>
+
+    <div
+      class="communication-feedback"
+      data-communication-feedback
+      role="status"
+      aria-live="polite"
+    ></div>
+
+    <div class="communication-results-heading">
+      <strong>Registos recentes</strong>
+      <span data-communication-count></span>
+    </div>
+    <div class="communication-records" data-communication-records aria-busy="false"></div>
+
+    <footer class="communication-footer">
+      <a href="/communication">
+        Abrir centro completo
+        <span aria-hidden="true">→</span>
+      </a>
+      <small>Todas as alterações ficam guardadas na base de dados.</small>
+    </footer>
+  </section>
+</dialog>
+
+<script src="{{ url_for('static', path='js/communication-drawer.js') }}" defer></script>

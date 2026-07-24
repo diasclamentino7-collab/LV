@@ -1,10 +1,10 @@
-{% macro card(title='', subtitle='', class_name='', action_url='', action_label='Abrir') %}
-<section class="card {{ class_name }}">
-  {% if title %}<div class="card-heading"><div><h2>{{ title }}</h2>{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}</div>{% if action_url %}<a class="quiet-button" href="{{ action_url }}" aria-label="{{ action_label }}">↗</a>{% endif %}</div>{% endif %}
+{% macro card(title='', subtitle='', class_name='', action_url='', action_label='Abrir', tilt=0) %}
+<section class="card {{ class_name }}" data-motion-card{% if tilt %} data-motion-tilt="{{ tilt }}"{% endif %}>
+  {% if title %}<div class="card-heading"{% if tilt %} data-motion-depth="front"{% endif %}><div><h2>{{ title }}</h2>{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}</div>{% if action_url %}<a class="quiet-button" href="{{ action_url }}" aria-label="{{ action_label }}">↗</a>{% endif %}</div>{% endif %}
   {{ caller() }}
 </section>
 {% endmacro %}
 
-{% macro progress(label, value, percent, color='pink') %}
-<div class="progress-row"><div class="progress-label"><span>{{ label }}</span><strong>{{ value }}</strong></div><div class="progress-track"><span class="progress-fill {{ color }}" style="width: {{ percent }}%"></span></div></div>
+{% macro progress(label, value, percent, color='pink', live_key='') %}
+<div class="progress-row"><div class="progress-label"><span>{{ label }}</span><strong{% if live_key %} data-live-key="{{ live_key }}" data-live-value="{{ percent }}" data-motion-number{% endif %}>{{ value }}</strong></div><div class="progress-track" role="progressbar" aria-label="{{ label }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percent }}"><span class="progress-fill {{ color }}" data-motion-progress{% if live_key %} data-live-progress{% endif %} style="width: {{ percent }}%"></span></div></div>
 {% endmacro %}

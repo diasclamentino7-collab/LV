@@ -1,9 +1,331 @@
 {% extends "base.html" %}
 {% block title %}Moodboard · {{ display_app_name|default(app_name) }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/moodboard-motion.css') }}">
+{% endblock %}
 {% block content %}
-<section class="page-intro"><div><p class="eyebrow">Inspiração</p><h1>Moodboard</h1><p class="intro-copy">Guardem imagens e referências para construir a identidade do vosso dia.</p></div><a class="primary-button" href="/moodboard/new">+ Nova inspiração</a></section>
-{% if message %}<div class="success-banner">{% if message == 'created' %}Inspiração adicionada.{% elif message == 'updated' %}Alterações guardadas.{% else %}Inspiração eliminada da galeria; os dados foram preservados.{% endif %}</div>{% endif %}
-{% if request.query_params.get('error') %}<div class="form-error">A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.</div>{% endif %}
-<form class="card search-bar moodboard-toolbar" method="get"><input name="q" value="{{ search }}" placeholder="Pesquisar título ou etiquetas"><label class="favorite-filter"><input type="checkbox" name="favorites" value="true" {% if favorites %}checked{% endif %}> Só favoritos</label><button class="secondary-button">Filtrar</button></form>
-{% if items %}<section class="moodboard-grid">{% for item in items %}<article class="moodboard-item"><a href="{{ item.source_url or item.image_url }}" target="_blank" rel="noopener"><img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy"></a><div class="moodboard-meta"><div><h2>{{ item.title }}</h2>{% if item.tags %}<p>{{ item.tags }}</p>{% endif %}</div><div class="moodboard-actions"><form method="post" action="/moodboard/{{ item.id }}/favorite"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button title="Favorito">{{ '♥' if item.is_favorite else '♡' }}</button></form><a href="/moodboard/{{ item.id }}/edit">Editar</a><form method="post" action="/moodboard/{{ item.id }}/archive" onsubmit="return confirm('Eliminar esta inspiração da galeria? Os dados serão preservados.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Eliminar</button></form></div></div></article>{% endfor %}</section>{% else %}<section class="card empty-state"><span class="empty-icon">✿</span><h3>O moodboard está pronto.</h3><p>Adicionem a primeira imagem através de um URL público.</p><a class="primary-button" href="/moodboard/new">Adicionar inspiração</a></section>{% endif %}
+<div class="moodboard-page" data-moodboard-root data-view="{{ selected_view }}">
+  <section class="page-intro moodboard-hero">
+    <div>
+      <p class="eyebrow">A vossa direção criativa</p>
+      <h1>Moodboard</h1>
+      <p class="intro-copy">
+        Reúnam cores, ambientes e detalhes numa galeria organizada ou componham
+        livremente a vossa Mesa de Inspiração.
+      </p>
+    </div>
+    <a class="primary-button moodboard-add-button" href="/moodboard/new">
+      <span aria-hidden="true">＋</span> Nova inspiração
+    </a>
+  </section>
+
+  {% if message %}
+  <div class="success-banner" role="status">
+    {% if message == "created" %}
+      Inspiração adicionada e guardada.
+    {% elif message == "updated" %}
+      Alterações guardadas.
+    {% elif message == "reordered" %}
+      A nova ordem ficou guardada.
+    {% elif message == "layout_reset" %}
+      A Mesa de Inspiração foi reorganizada.
+    {% else %}
+      Inspiração retirada da galeria; o registo foi preservado.
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if request.query_params.get("error") %}
+  <div class="form-error" role="alert">
+    A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.
+  </div>
+  {% endif %}
+
+  <form class="card moodboard-toolbar" method="get" aria-label="Pesquisar e filtrar inspirações">
+    <div class="moodboard-search">
+      <label for="moodboard-search">Pesquisar</label>
+      <div>
+        <span aria-hidden="true">⌕</span>
+        <input
+          id="moodboard-search"
+          name="q"
+          value="{{ search }}"
+          maxlength="100"
+          placeholder="Título, notas ou etiquetas"
+        >
+      </div>
+    </div>
+    <label>
+      Coleção
+      <select name="collection_id">
+        <option value="">Todas as coleções</option>
+        {% for collection in collections %}
+        <option
+          value="{{ collection.id }}"
+          {% if selected_collection_id == collection.id %}selected{% endif %}
+        >{{ collection.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Ordenar
+      <select name="sort">
+        <option value="custom" {% if selected_sort == "custom" %}selected{% endif %}>
+          Ordem personalizada
+        </option>
+        <option value="recent" {% if selected_sort == "recent" %}selected{% endif %}>
+          Alteradas recentemente
+        </option>
+        <option value="title" {% if selected_sort == "title" %}selected{% endif %}>
+          Título
+        </option>
+        <option value="favorites" {% if selected_sort == "favorites" %}selected{% endif %}>
+          Favoritas primeiro
+        </option>
+      </select>
+    </label>
+    <label class="favorite-filter">
+      <input type="checkbox" name="favorites" value="true" {% if favorites %}checked{% endif %}>
+      Só favoritos
+    </label>
+    <input type="hidden" name="view" value="{{ selected_view }}">
+    <button class="secondary-button" type="submit">Aplicar</button>
+  </form>
+
+  <div class="moodboard-view-bar">
+    <div class="moodboard-view-switcher" aria-label="Modo de apresentação">
+      <a
+        href="?view=gallery{% if search %}&q={{ search|urlencode }}{% endif %}{% if favorites %}&favorites=true{% endif %}{% if selected_collection_id %}&collection_id={{ selected_collection_id }}{% endif %}&sort={{ selected_sort }}"
+        class="{% if selected_view == 'gallery' %}is-active{% endif %}"
+        {% if selected_view == "gallery" %}aria-current="page"{% endif %}
+      ><span aria-hidden="true">▦</span> Galeria</a>
+      <a
+        href="?view=table{% if search %}&q={{ search|urlencode }}{% endif %}{% if favorites %}&favorites=true{% endif %}{% if selected_collection_id %}&collection_id={{ selected_collection_id }}{% endif %}&sort={{ selected_sort }}"
+        class="{% if selected_view == 'table' %}is-active{% endif %}"
+        {% if selected_view == "table" %}aria-current="page"{% endif %}
+      ><span aria-hidden="true">✦</span> Mesa de Inspiração</a>
+    </div>
+    <p><strong>{{ items|length }}</strong> {{ "inspiração" if items|length == 1 else "inspirações" }}</p>
+  </div>
+
+  {% if items and selected_view == "gallery" %}
+  <section class="moodboard-grid" aria-label="Galeria de inspirações">
+    {% for item in items %}
+    <article
+      class="moodboard-item premium-moodboard-card"
+      data-moodboard-card
+      data-preview='{{ {
+        "title": item.title,
+        "image": item.image_url,
+        "source": item.source_url,
+        "tags": item.tags,
+        "notes": item.notes,
+        "collection": collection_names.get(item.collection_id, "")
+      }|tojson|forceescape }}'
+    >
+      <div class="moodboard-image-frame">
+        <button
+          class="moodboard-preview-trigger"
+          type="button"
+          data-preview-open
+          aria-label="Pré-visualizar {{ item.title }}"
+        >
+          <img
+            src="{{ item.image_url }}"
+            alt="{{ item.title }}"
+            loading="lazy"
+            decoding="async"
+          >
+          <span class="moodboard-zoom-hint" aria-hidden="true">Ampliar</span>
+        </button>
+        <form
+          class="moodboard-favorite-form"
+          method="post"
+          action="/moodboard/{{ item.id }}/favorite"
+          data-favorite-form
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="return_view" value="gallery">
+          <button
+            class="moodboard-favorite {% if item.is_favorite %}is-favorite{% endif %}"
+            type="submit"
+            aria-label="{{ 'Retirar dos favoritos' if item.is_favorite else 'Marcar como favorito' }}"
+            aria-pressed="{{ 'true' if item.is_favorite else 'false' }}"
+          ><span aria-hidden="true">{{ "♥" if item.is_favorite else "♡" }}</span></button>
+        </form>
+      </div>
+      <div class="moodboard-meta">
+        <div>
+          <p class="moodboard-collection">{{ collection_names.get(item.collection_id, "Inspiração") }}</p>
+          <h2>{{ item.title }}</h2>
+          {% if item.tags %}<p class="moodboard-tags">{{ item.tags }}</p>{% endif %}
+        </div>
+        <div class="moodboard-actions">
+          {% if selected_sort == "custom" %}
+          <div class="moodboard-order-actions" aria-label="Alterar ordem de {{ item.title }}">
+            <form method="post" action="/moodboard/{{ item.id }}/reorder">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="direction" value="previous">
+              <input type="hidden" name="return_view" value="gallery">
+              <button type="submit" title="Mover para trás" aria-label="Mover {{ item.title }} para trás">←</button>
+            </form>
+            <form method="post" action="/moodboard/{{ item.id }}/reorder">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="direction" value="next">
+              <input type="hidden" name="return_view" value="gallery">
+              <button type="submit" title="Mover para a frente" aria-label="Mover {{ item.title }} para a frente">→</button>
+            </form>
+          </div>
+          {% endif %}
+          <a href="/moodboard/{{ item.id }}/edit">Editar</a>
+          <form
+            method="post"
+            action="/moodboard/{{ item.id }}/archive"
+            onsubmit="return confirm('Retirar esta inspiração da galeria? O registo será preservado.')"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit">Retirar</button>
+          </form>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+  {% elif items and selected_view == "table" %}
+  <section class="inspiration-table-panel" aria-labelledby="inspiration-table-title">
+    <div class="inspiration-table-heading">
+      <div>
+        <p class="eyebrow">Composição livre</p>
+        <h2 id="inspiration-table-title">Mesa de Inspiração</h2>
+        <p>
+          Arrastem pela pega. Com o teclado, foquem a pega e usem as setas;
+          Shift + seta move mais depressa.
+        </p>
+      </div>
+      <form
+        action="/moodboard/layout/reset"
+        method="post"
+        data-layout-reset
+        onsubmit="return confirm('Reorganizar todas as fotografias na posição inicial?')"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="secondary-button" type="submit">Reorganizar mesa</button>
+      </form>
+    </div>
+    <div class="inspiration-table-scroll">
+      <div
+        class="inspiration-table"
+        id="inspiration-table"
+        data-inspiration-table
+        data-csrf-token="{{ csrf_token }}"
+        aria-label="Superfície com inspirações reposicionáveis"
+      >
+        <div class="inspiration-table-texture" aria-hidden="true"></div>
+        {% for item in items %}
+        {% set placement = placements.get(item.id, {"x": 5, "y": 5, "rotation": 0, "layer": loop.index}) %}
+        <article
+          class="inspiration-note"
+          data-moodboard-card
+          data-placement-url="/moodboard/{{ item.id }}/placement"
+          data-x="{{ placement.x }}"
+          data-y="{{ placement.y }}"
+          data-rotation="{{ placement.rotation }}"
+          data-layer="{{ placement.layer }}"
+          data-preview='{{ {
+            "title": item.title,
+            "image": item.image_url,
+            "source": item.source_url,
+            "tags": item.tags,
+            "notes": item.notes,
+            "collection": collection_names.get(item.collection_id, "")
+          }|tojson|forceescape }}'
+          style="--note-x: {{ placement.x }}; --note-y: {{ placement.y }}; --note-rotation: {{ placement.rotation }}deg; --note-layer: {{ placement.layer }};"
+        >
+          <div class="inspiration-note-tools">
+            <button
+              class="inspiration-drag-handle"
+              type="button"
+              data-drag-handle
+              aria-label="Mover {{ item.title }}. Use as setas para ajustar a posição."
+            ><span aria-hidden="true">⠿</span></button>
+            <button type="button" data-rotate-note aria-label="Rodar {{ item.title }}">↻</button>
+            <button type="button" data-bring-front aria-label="Trazer {{ item.title }} para a frente">↑</button>
+          </div>
+          <button
+            class="inspiration-note-image"
+            type="button"
+            data-preview-open
+            aria-label="Pré-visualizar {{ item.title }}"
+          >
+            <img
+              src="{{ item.image_url }}"
+              alt="{{ item.title }}"
+              loading="lazy"
+              decoding="async"
+            >
+          </button>
+          <div class="inspiration-note-caption">
+            <h3>{{ item.title }}</h3>
+            {% if item.tags %}<p>{{ item.tags }}</p>{% endif %}
+          </div>
+          <form
+            class="moodboard-favorite-form inspiration-note-favorite"
+            method="post"
+            action="/moodboard/{{ item.id }}/favorite"
+            data-favorite-form
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="return_view" value="table">
+            <button
+              class="moodboard-favorite {% if item.is_favorite %}is-favorite{% endif %}"
+              type="submit"
+              aria-label="{{ 'Retirar dos favoritos' if item.is_favorite else 'Marcar como favorito' }}"
+              aria-pressed="{{ 'true' if item.is_favorite else 'false' }}"
+            ><span aria-hidden="true">{{ "♥" if item.is_favorite else "♡" }}</span></button>
+          </form>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+    <p class="inspiration-save-status" data-layout-status role="status" aria-live="polite">
+      As posições são guardadas automaticamente.
+    </p>
+  </section>
+  {% else %}
+  <section class="card empty-state moodboard-empty">
+    <span class="empty-icon" aria-hidden="true">✿</span>
+    <h2>{{ "Nenhuma inspiração encontrada." if search or favorites or selected_collection_id else "O moodboard está pronto." }}</h2>
+    <p>
+      {% if search or favorites or selected_collection_id %}
+        Ajustem os filtros ou guardem uma nova referência.
+      {% else %}
+        Adicionem a primeira imagem através de um URL público.
+      {% endif %}
+    </p>
+    <a class="primary-button" href="/moodboard/new">Adicionar inspiração</a>
+  </section>
+  {% endif %}
+
+  <dialog class="moodboard-lightbox" data-moodboard-dialog aria-labelledby="moodboard-dialog-title">
+    <div class="moodboard-dialog-shell">
+      <button class="moodboard-dialog-close" type="button" data-preview-close aria-label="Fechar pré-visualização">×</button>
+      <button class="moodboard-dialog-nav is-previous" type="button" data-preview-previous aria-label="Inspiração anterior">‹</button>
+      <figure>
+        <img data-preview-image src="" alt="">
+        <figcaption>
+          <p class="moodboard-collection" data-preview-collection></p>
+          <h2 id="moodboard-dialog-title" data-preview-title></h2>
+          <p class="moodboard-tags" data-preview-tags></p>
+          <p data-preview-notes></p>
+          <a data-preview-source href="#" target="_blank" rel="noopener">Abrir fonte original ↗</a>
+        </figcaption>
+      </figure>
+      <button class="moodboard-dialog-nav is-next" type="button" data-preview-next aria-label="Inspiração seguinte">›</button>
+      <p class="moodboard-dialog-position" data-preview-position aria-live="polite"></p>
+    </div>
+  </dialog>
+  <div class="moodboard-toast" data-moodboard-toast role="status" aria-live="polite"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', path='js/moodboard.js') }}" defer></script>
 {% endblock %}

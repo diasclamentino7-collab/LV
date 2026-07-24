@@ -1,0 +1,449 @@
+.communication-fab {
+  position: fixed;
+  z-index: 20;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, white);
+  border-radius: 999px;
+  padding: 0 17px;
+  color: var(--on-primary, #333);
+  background: var(--primary);
+  box-shadow: 0 14px 36px rgba(75, 43, 55, .18);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.communication-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 42px rgba(75, 43, 55, .23);
+}
+
+.communication-fab > span:first-child { font-size: 18px; }
+
+.communication-dialog {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  color: var(--text, #333);
+  background: transparent;
+}
+
+.communication-dialog::backdrop {
+  background: rgba(36, 26, 30, .34);
+  backdrop-filter: blur(3px);
+}
+
+.communication-panel {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+  width: min(470px, 100%);
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid rgba(226, 215, 215, .9);
+  padding: 28px 26px max(22px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 95% 3%, var(--primary-soft, #f8dce8), transparent 32%),
+    color-mix(in srgb, var(--background, #faf8f6) 94%, white);
+  box-shadow: -24px 0 60px rgba(61, 42, 49, .14);
+}
+
+.communication-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.communication-eyebrow {
+  margin: 0 0 6px;
+  color: color-mix(in srgb, var(--primary) 70%, #6e3c4e);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.communication-heading h2 {
+  margin: 0;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 29px;
+  font-weight: 500;
+  letter-spacing: -.04em;
+}
+
+.communication-heading p:last-child {
+  max-width: 320px;
+  margin: 7px 0 0;
+  color: var(--muted, #847b7c);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.communication-close {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 1px solid var(--line, #ebe4e1);
+  border-radius: 12px;
+  color: var(--muted, #847b7c);
+  background: rgba(255, 255, 255, .78);
+  place-items: center;
+  font-size: 22px;
+}
+
+.communication-close:hover { color: #8f4863; background: white; }
+
+.communication-search { margin-top: 22px; }
+.communication-search > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+.communication-search > div { position: relative; }
+.communication-search span {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  color: #a59a9c;
+  transform: translateY(-50%);
+  font-size: 18px;
+}
+
+.communication-search input,
+.communication-compose input,
+.communication-compose select,
+.communication-compose textarea {
+  width: 100%;
+  border: 1px solid #e4dcdc;
+  border-radius: 10px;
+  color: var(--text, #333);
+  background: rgba(255, 255, 255, .88);
+  font: inherit;
+  font-size: 12px;
+}
+.communication-search input {
+  height: 44px;
+  padding: 0 13px 0 39px;
+}
+.communication-search input:focus,
+.communication-compose input:focus,
+.communication-compose select:focus,
+.communication-compose textarea:focus {
+  border-color: var(--primary, #d88ba7);
+  outline: 3px solid color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.communication-compose {
+  margin-top: 12px;
+  border: 1px solid var(--line, #ebe4e1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .7);
+}
+.communication-compose summary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  color: #8e4d65;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  list-style: none;
+}
+.communication-compose summary::-webkit-details-marker { display: none; }
+.communication-compose[open] summary { border-bottom: 1px solid var(--line, #ebe4e1); }
+.communication-compose form {
+  display: grid;
+  gap: 11px;
+  padding: 14px;
+}
+.communication-compose label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: #62595a;
+  font-size: 10px;
+  font-weight: 700;
+}
+.communication-compose label small { color: var(--muted, #847b7c); font-weight: 500; }
+.communication-compose input,
+.communication-compose select { min-height: 40px; padding: 0 10px; }
+.communication-compose textarea { min-height: 68px; padding: 10px; resize: vertical; }
+.communication-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.communication-save {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--on-primary, #333);
+  background: var(--primary, #d88ba7);
+  font-size: 11px;
+  font-weight: 750;
+}
+.communication-save:disabled { cursor: wait; opacity: .68; }
+.communication-spinner {
+  display: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: communication-spin .7s linear infinite;
+}
+.communication-save.is-loading .communication-spinner { display: block; }
+
+.communication-feedback {
+  min-height: 20px;
+  padding: 7px 1px 0;
+  color: #4e7658;
+  font-size: 10px;
+}
+.communication-feedback.is-error { color: #a03e60; }
+
+.communication-results-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 9px 1px 4px;
+  font-size: 10px;
+}
+.communication-results-heading strong { font-size: 11px; }
+.communication-results-heading span { color: var(--muted, #847b7c); }
+
+.communication-records {
+  flex: 1;
+  min-height: 100px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #d9c9cf transparent;
+  scrollbar-width: thin;
+}
+.communication-record {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: start;
+  border-bottom: 1px solid var(--line, #ebe4e1);
+  padding: 13px 2px;
+}
+.communication-type {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  color: #9f536f;
+  background: var(--primary-soft, #f8dce8);
+  place-items: center;
+  font-size: 14px;
+}
+.communication-record[data-category="Ideia"] .communication-type {
+  color: #8a6a36;
+  background: #f8edd9;
+}
+.communication-record[data-category="Decisão"] .communication-type {
+  color: #4e6d68;
+  background: #e5f2ef;
+}
+.communication-record[data-category="Lembrete"] .communication-type {
+  color: #6a6091;
+  background: #ece9f7;
+}
+.communication-record[data-category="Tarefa rápida"] .communication-type {
+  color: #587350;
+  background: #e9f3e6;
+}
+.communication-record h3 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.communication-record p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 4px 0 0;
+  color: var(--muted, #847b7c);
+  font-size: 10px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.communication-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  margin-top: 7px;
+  color: #968b8d;
+  font-size: 8.5px;
+}
+.communication-priority {
+  align-self: center;
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: #766a6c;
+  background: #f2eded;
+  font-size: 8px;
+  font-weight: 700;
+}
+.communication-priority[data-priority="Alta"] { color: #a03e60; background: #fff0f3; }
+.communication-record-link::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+.communication-record-main { position: relative; min-width: 0; }
+.communication-record-link:focus-visible::after {
+  border: 2px solid var(--primary);
+  border-radius: 9px;
+}
+.communication-empty,
+.communication-loading {
+  display: grid;
+  min-height: 150px;
+  align-content: center;
+  justify-items: center;
+  padding: 22px;
+  color: var(--muted, #847b7c);
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.communication-empty span { margin-bottom: 7px; color: var(--primary); font-size: 26px; }
+.communication-loading i {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 10px;
+  border: 2px solid var(--primary-soft, #f8dce8);
+  border-top-color: var(--primary, #d88ba7);
+  border-radius: 50%;
+  animation: communication-spin .75s linear infinite;
+}
+
+.communication-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line, #ebe4e1);
+  padding-top: 14px;
+}
+.communication-footer a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 7px;
+  color: #9d4f6c;
+  font-size: 10.5px;
+  font-weight: 750;
+}
+.communication-footer small {
+  max-width: 175px;
+  color: var(--muted, #847b7c);
+  font-size: 8px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.communication-dialog[open]::backdrop { animation: communication-fade-in .18s ease both; }
+.communication-dialog[open] .communication-panel {
+  animation: communication-slide-in .24s cubic-bezier(.2, .75, .25, 1) both;
+}
+.communication-dialog.is-closing::backdrop {
+  animation: communication-fade-out .17s ease both;
+}
+.communication-dialog.is-closing .communication-panel {
+  animation: communication-slide-out .17s ease both;
+}
+
+html[data-motion="reduced"] .communication-dialog[open] .communication-panel {
+  animation: communication-fade-in .1s ease both;
+}
+html[data-motion="reduced"] .communication-fab { transition-duration: .08s; }
+html[data-motion="reduced"] .communication-fab:hover { transform: none; }
+html[data-motion="none"] .communication-dialog *,
+html[data-motion="none"] .communication-dialog::backdrop,
+html[data-motion="none"] .communication-fab {
+  animation: none !important;
+  scroll-behavior: auto !important;
+  transition: none !important;
+}
+
+@keyframes communication-slide-in {
+  from { opacity: .5; transform: translateX(32px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes communication-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes communication-slide-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: .55; transform: translateX(24px); }
+}
+@keyframes communication-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes communication-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 560px) {
+  .communication-fab {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: 48px;
+    justify-content: center;
+    padding: 0;
+  }
+  .communication-fab > span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .communication-panel {
+    width: 100%;
+    border-left: 0;
+    padding: max(20px, env(safe-area-inset-top)) 17px max(17px, env(safe-area-inset-bottom));
+  }
+  .communication-form-row { grid-template-columns: 1fr; }
+  .communication-footer small { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .communication-dialog *,
+  .communication-dialog::backdrop,
+  .communication-fab {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

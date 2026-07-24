@@ -547,6 +547,52 @@
             </label>
           </fieldset>
 
+          <fieldset class="settings-motion-options">
+            <legend class="settings-group-title">Movimento da interface</legend>
+            <p>Escolham a intensidade visual. A preferência “reduzir movimento” do dispositivo tem sempre prioridade.</p>
+            <div class="settings-motion-grid">
+              <label for="motion-full">
+                <input
+                  id="motion-full"
+                  type="radio"
+                  name="motion_preference"
+                  value="full"
+                  {% if settings.motion_preference == 'full' %}checked{% endif %}
+                >
+                <span aria-hidden="true">✦</span>
+                <strong>Movimento completo</strong>
+                <small>Profundidade subtil, entradas suaves e números animados.</small>
+                <i aria-hidden="true"></i>
+              </label>
+              <label for="motion-reduced">
+                <input
+                  id="motion-reduced"
+                  type="radio"
+                  name="motion_preference"
+                  value="reduced"
+                  {% if settings.motion_preference == 'reduced' %}checked{% endif %}
+                >
+                <span aria-hidden="true">○</span>
+                <strong>Movimento reduzido</strong>
+                <small>Apenas fades breves e feedback essencial, sem inclinação.</small>
+                <i aria-hidden="true"></i>
+              </label>
+              <label for="motion-none">
+                <input
+                  id="motion-none"
+                  type="radio"
+                  name="motion_preference"
+                  value="none"
+                  {% if settings.motion_preference == 'none' %}checked{% endif %}
+                >
+                <span aria-hidden="true">—</span>
+                <strong>Sem animações</strong>
+                <small>Toda a aplicação permanece funcional e imediatamente estável.</small>
+                <i aria-hidden="true"></i>
+              </label>
+            </div>
+          </fieldset>
+
           <fieldset class="settings-dashboard-options">
             <legend class="settings-group-title">Visão do dashboard</legend>
             <p>Mostrem apenas os blocos que ajudam no vosso planeamento diário.</p>

@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% block title %}Orçamento · {{ display_app_name|default(app_name) }}{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/budget.css') }}">
+{% endblock %}
+{% block content %}
+<section class="page-intro budget-intro" data-motion-list>
+  <div>
+    <p class="eyebrow">Controlo financeiro</p>
+    <h1>Orçamento{% if show_archived %} · eliminados{% endif %}</h1>
+    <p class="intro-copy">Uma visão rigorosa do que planearam, gastaram e ainda têm disponível.</p>
+  </div>
+  <div class="page-actions">
+    <a class="secondary-button" href="/budget?archived={{ 'false' if show_archived else 'true' }}">
+      {{ 'Ver ativos' if show_archived else 'Ver eliminados' }}
+    </a>
+    {% if not show_archived %}
+      <a class="secondary-button" href="/expenses">Despesas</a>
+      <a class="secondary-button" href="/payments">Pagamentos</a>
+      <a class="primary-button" href="/budget/new">+ Nova categoria</a>
+    {% endif %}
+  </div>
+</section>
+
+{% if message %}
+  <div class="success-banner">
+    {% if message == 'created' %}Categoria criada e incluída nos totais.
+    {% elif message == 'updated' %}Categoria atualizada e valores recalculados.
+    {% elif message == 'restored' %}Categoria recuperada com sucesso.
+    {% else %}Categoria retirada da visão ativa. Os dados continuam preservados.
+    {% endif %}
+  </div>
+{% endif %}
+{% if error %}
+  <div class="form-error">
+    {% if error == 'invalid' %}Não foi possível guardar. Confirmem se o nome da categoria é único e se o limite é válido.
+    {% else %}A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if not show_archived %}
+<div
+  class="budget-workspace"
+  data-budget-live
+  data-budget-search="{{ search }}"
+  data-budget-currency="{{ ui_settings.currency if ui_settings is defined else 'EUR' }}"
+>
+  {% set finance = budget_data.summary %}
+  <section class="budget-kpis" aria-label="Resumo do orçamento" data-motion-list>
+    <article class="budget-kpi is-total" data-motion-card data-motion-tilt="1.5">
+      <span class="budget-kpi-icon" aria-hidden="true" data-motion-depth="front">◇</span>
+      <div data-motion-depth="front">
+        <p>Orçamento total</p>
+        <strong
+          data-budget-summary="total"
+          data-budget-value="{{ finance.total }}"
+          data-motion-number
+          data-motion-value="{{ finance.total }}"
+          data-motion-decimals="2"
+        >{{ currency_symbol }}{{ '%.2f'|format(finance.total) }}</strong>
+        <small>Definido nas configurações</small>
+      </div>
+    </article>
+    <article class="budget-kpi is-spent" data-motion-card data-motion-tilt="1.5">
+      <span class="budget-kpi-icon" aria-hidden="true" data-motion-depth="front">↗</span>
+      <div data-motion-depth="front">
+        <p>Despesas atuais</p>
+        <strong
+          data-budget-summary="expenses"
+          data-budget-value="{{ finance.expenses }}"
+          data-motion-number
+          data-motion-value="{{ finance.expenses }}"
+          data-motion-decimals="2"
+        >{{ currency_symbol }}{{ '%.2f'|format(finance.expenses) }}</strong>
+        <small>
+          <span
+            data-budget-summary="percentage"
+            data-budget-value="{{ budget_data.exact_percentage }}"
+            data-motion-number
+            data-motion-value="{{ budget_data.exact_percentage }}"
+            data-motion-decimals="2"
+          >{{ '%.2f'|format(budget_data.exact_percentage) }}%</span>
+          do orçamento
+        </small>
+      </div>
+    </article>
+    <article class="budget-kpi is-remaining{% if finance.remaining < 0 %} is-over{% endif %}" data-motion-card data-motion-tilt="1.5">
+      <span class="budget-kpi-icon" aria-hidden="true" data-motion-depth="front">⌁</span>
+      <div data-motion-depth="front">
+        <p>Valor restante</p>
+        <strong
+          data-budget-summary="remaining"
+          data-budget-value="{{ finance.remaining }}"
+          data-motion-number
+          data-motion-value="{{ finance.remaining }}"
+          data-motion-decimals="2"
+        >{{ currency_symbol }}{{ '%.2f'|format(finance.remaining) }}</strong>
+        <small data-budget-remaining-copy>
+          {{ 'Acima do orçamento definido' if finance.remaining < 0 else 'Disponível no orçamento total' }}
+        </small>
+      </div>
+    </article>
+    <article class="budget-kpi is-planned" data-motion-card data-motion-tilt="1.5">
+      <span class="budget-kpi-icon" aria-hidden="true" data-motion-depth="front">≋</span>
+      <div data-motion-depth="front">
+        <p>Limites planeados</p>
+        <strong
+          data-budget-summary="allocated"
+          data-budget-value="{{ finance.allocated }}"
+          data-motion-number
+          data-motion-value="{{ finance.allocated }}"
+          data-motion-decimals="2"
+        >{{ currency_symbol }}{{ '%.2f'|format(finance.allocated) }}</strong>
+        <small>
+          <span data-budget-summary="categories" data-budget-value="{{ finance.categories }}" data-motion-number>{{ finance.categories }}</span>
+          {{ 'categoria' if finance.categories == 1 else 'categorias' }} ativas
+        </small>
+      </div>
+    </article>
+  </section>
+
+  <section class="card budget-overview" data-motion-card>
+    <div class="budget-overview-heading">
+      <div>
+        <p class="eyebrow">Distribuição real</p>
+        <h2>Despesas por categoria</h2>
+        <p>Valores confirmados ou pendentes; despesas canceladas não entram nos cálculos.</p>
+      </div>
+      <div class="budget-overview-total">
+        <span>Utilização global</span>
+        <strong
+          data-budget-summary="percentage"
+          data-budget-value="{{ budget_data.exact_percentage }}"
+          data-motion-number
+          data-motion-value="{{ budget_data.exact_percentage }}"
+          data-motion-decimals="2"
+        >{{ '%.2f'|format(budget_data.exact_percentage) }}%</strong>
+      </div>
+    </div>
+    <div class="budget-global-track" aria-label="Percentagem do orçamento utilizada">
+      <span
+        class="budget-global-fill"
+        data-budget-summary-progress
+        data-motion-progress
+        data-motion-value="{{ budget_data.progress_percentage }}"
+        aria-valuenow="{{ budget_data.progress_percentage }}"
+        style="width: {{ budget_data.progress_percentage }}%"
+      ></span>
+    </div>
+    <div
+      class="budget-distribution{% if budget_data.visible_expense_total <= 0 %} is-empty{% endif %}"
+      data-budget-distribution
+      role="img"
+      aria-label="Distribuição das despesas atuais pelas categorias"
+    >
+      {% for category in budget_data.categories if category.share_percentage > 0 %}
+        <span
+          data-budget-segment
+          data-category-id="{{ category.id }}"
+          data-motion-chart-segment
+          style="--budget-share: {{ category.share_percentage }}%"
+          title="{{ category.name }} · {{ '%.2f'|format(category.share_percentage) }}%"
+        ></span>
+      {% endfor %}
+    </div>
+    <p class="budget-chart-note" data-budget-chart-note>
+      {% if budget_data.visible_expense_total > 0 %}
+        Cada segmento representa a proporção real das despesas nas categorias visíveis.
+      {% else %}
+        A distribuição surgirá assim que registarem a primeira despesa.
+      {% endif %}
+    </p>
+  </section>
+
+  <section class="budget-category-panel">
+    <div class="budget-section-heading">
+      <div>
+        <p class="eyebrow">Planeamento detalhado</p>
+        <h2>Categorias</h2>
+      </div>
+      <form class="search-bar budget-search" method="get">
+        <label class="sr-only" for="budget-search-input">Pesquisar categorias</label>
+        <input
+          id="budget-search-input"
+          name="q"
+          value="{{ search }}"
+          placeholder="Pesquisar categorias"
+        >
+        <button class="secondary-button">Pesquisar</button>
+        {% if search %}<a class="text-button" href="/budget">Limpar</a>{% endif %}
+      </form>
+    </div>
+
+    <p class="budget-live-state" data-budget-live-state aria-live="polite">
+      Valores guardados na base de dados.
+    </p>
+    <div class="budget-category-list" data-budget-categories data-motion-list>
+      {% for category in budget_data.categories %}
+      <article
+        class="budget-category{% if category.over_limit %} is-over-limit{% endif %}"
+        data-budget-category
+        data-category-id="{{ category.id }}"
+        data-motion-card
+      >
+        <div class="budget-category-main">
+          <div class="budget-category-title">
+            <span class="budget-category-dot" aria-hidden="true"></span>
+            <div>
+              <h3 data-budget-field="name">{{ category.name }}</h3>
+              <p>
+                Atualizado
+                <time
+                  data-budget-field="updated-at"
+                  datetime="{{ category.updated_at.isoformat() if category.updated_at else '' }}"
+                >{{ category.updated_at.strftime('%d/%m/%Y às %H:%M') if category.updated_at else '—' }}</time>
+              </p>
+            </div>
+          </div>
+          <div class="budget-category-values">
+            <div>
+              <span>Despesas</span>
+              <strong
+                data-budget-field="expenses"
+                data-budget-value="{{ category.expenses }}"
+                data-motion-number
+                data-motion-value="{{ category.expenses }}"
+                data-motion-decimals="2"
+              >{{ currency_symbol }}{{ '%.2f'|format(category.expenses) }}</strong>
+            </div>
+            <div>
+              <span>Limite</span>
+              <strong
+                data-budget-field="planned-limit"
+                data-budget-value="{{ category.planned_limit }}"
+                data-motion-number
+                data-motion-value="{{ category.planned_limit }}"
+                data-motion-decimals="2"
+              >{{ currency_symbol }}{{ '%.2f'|format(category.planned_limit) }}</strong>
+            </div>
+          </div>
+        </div>
+        <div class="budget-category-progress">
+          <div class="budget-progress-copy">
+            <span data-budget-field="usage-copy">
+              {% if category.usage_percentage is none %}Sem limite definido
+              {% else %}{{ '%.2f'|format(category.usage_percentage) }}% do limite utilizado
+              {% endif %}
+            </span>
+            <strong data-budget-field="remaining-copy">
+              {% if not category.has_limit %}
+                {{ currency_symbol }}{{ '%.2f'|format(category.expenses) }} sem limite atribuído
+              {% elif category.over_limit %}
+                {{ currency_symbol }}{{ '%.2f'|format(category.remaining|abs) }} acima do limite
+              {% else %}
+                {{ currency_symbol }}{{ '%.2f'|format(category.remaining) }} disponíveis
+              {% endif %}
+            </strong>
+          </div>
+          <div class="budget-progress-track">
+            <span
+              class="budget-progress-fill"
+              data-budget-field="progress"
+              data-motion-progress
+              data-motion-value="{{ category.progress_percentage }}"
+              aria-valuenow="{{ category.progress_percentage }}"
+              style="width: {{ category.progress_percentage }}%"
+            ></span>
+          </div>
+        </div>
+        <div class="record-actions budget-category-actions">
+          <a data-budget-action="edit" href="/budget/{{ category.id }}/edit">Editar</a>
+          <form
+            method="post"
+            action="/budget/{{ category.id }}/archive"
+            data-budget-mutation
+            data-budget-archive
+            onsubmit="return confirm('Eliminar esta categoria da lista? Os dados serão preservados e poderão ser recuperados.')"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button>Eliminar</button>
+          </form>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <div class="empty-state budget-empty" data-budget-empty {% if budget_data.categories %}hidden{% endif %}>
+      <span class="empty-icon">✦</span>
+      <h3>{{ 'Nenhuma categoria corresponde à pesquisa.' if search else 'Ainda não há categorias.' }}</h3>
+      <p>Criem uma categoria com um limite planeado; os valores passam a ser calculados de imediato.</p>
+      {% if not search %}<a class="primary-button" href="/budget/new">Criar primeira categoria</a>{% endif %}
+    </div>
+  </section>
+
+  <template data-budget-category-template>
+    <article class="budget-category" data-budget-category data-motion-card>
+      <div class="budget-category-main">
+        <div class="budget-category-title">
+          <span class="budget-category-dot" aria-hidden="true"></span>
+          <div>
+            <h3 data-budget-field="name"></h3>
+            <p>Atualizado <time data-budget-field="updated-at"></time></p>
+          </div>
+        </div>
+        <div class="budget-category-values">
+          <div><span>Despesas</span><strong data-budget-field="expenses" data-motion-number data-motion-decimals="2"></strong></div>
+          <div><span>Limite</span><strong data-budget-field="planned-limit" data-motion-number data-motion-decimals="2"></strong></div>
+        </div>
+      </div>
+      <div class="budget-category-progress">
+        <div class="budget-progress-copy">
+          <span data-budget-field="usage-copy"></span>
+          <strong data-budget-field="remaining-copy"></strong>
+        </div>
+        <div class="budget-progress-track">
+          <span class="budget-progress-fill" data-budget-field="progress" data-motion-progress></span>
+        </div>
+      </div>
+      <div class="record-actions budget-category-actions">
+        <a data-budget-action="edit">Editar</a>
+        <form method="post" data-budget-mutation data-budget-archive>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button>Eliminar</button>
+        </form>
+      </div>
+    </article>
+  </template>
+</div>
+{% else %}
+<section class="card module-records">
+  {% if records %}
+  <div class="record-list">
+    {% for record in records %}
+    <article class="record-row">
+      <div>
+        <h2>{{ record_labels[record.id] }}</h2>
+        <p>Limite preservado: {{ currency_symbol }}{{ '%.2f'|format(record.planned_limit) }} · atualizado em {{ record.updated_at.strftime('%d/%m/%Y %H:%M') if record.updated_at else '—' }}</p>
+      </div>
+      <div class="record-actions">
+        <form method="post" action="/budget/{{ record.id }}/restore">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button>Recuperar</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-icon">✦</span>
+    <h3>Não há categorias eliminadas.</h3>
+    <p>Quando retirarem uma categoria, ela ficará preservada aqui para possível recuperação.</p>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+  {% if not show_archived %}
+    <script src="{{ url_for('static', path='js/budget.js') }}" defer></script>
+  {% endif %}
+{% endblock %}

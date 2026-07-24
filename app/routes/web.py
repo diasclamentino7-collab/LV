@@ -18,7 +18,7 @@ from app.core.templating import CURRENCY_SYMBOLS, safe_color, templates
 from app.db.session import SessionLocal
 from app.models.core import Activity, ProjectSettings, User
 from app.models.moodboard import MoodboardItem
-from app.models.planning import BudgetCategory, Guest, Payment, Task
+from app.models.planning import Guest, Payment, Task
 from app.repositories.project_settings import get_project_settings
 from app.schemas.settings import (
     AppearanceSettings,
@@ -57,6 +57,48 @@ def decimal_or_zero(value: str | Decimal | None) -> Decimal:
 
 def checked(form: dict[str, str], field: str) -> bool:
     return field in form and form[field].casefold() not in {"", "0", "false", "off"}
+
+
+def planning_snapshot(db, settings: ProjectSettings) -> tuple[dict[str, int], dict]:
+    """Build the shared live dashboard totals from persisted records."""
+
+    stats = {
+        "guests": db.scalar(
+            select(func.count()).select_from(Guest).where(Guest.is_archived.is_(False))
+        ),
+        "confirmed_guests": db.scalar(
+            select(func.count())
+            .select_from(Guest)
+            .where(Guest.is_archived.is_(False), Guest.rsvp_status == "Confirmado")
+        ),
+        "tasks": db.scalar(
+            select(func.count()).select_from(Task).where(Task.is_archived.is_(False))
+        ),
+        "completed_tasks": db.scalar(
+            select(func.count())
+            .select_from(Task)
+            .where(Task.is_archived.is_(False), Task.status == "Concluído")
+        ),
+    }
+    stats["task_percentage"] = (
+        int(stats["completed_tasks"] / stats["tasks"] * 100) if stats["tasks"] else 0
+    )
+    finance = financial_summary(db, decimal_or_zero(settings.total_budget))
+    return stats, finance
+
+
+def localized_wedding_target(settings: ProjectSettings) -> datetime | None:
+    """Return the wedding moment in the configured project timezone."""
+
+    if settings.wedding_date is None:
+        return None
+    try:
+        wedding_timezone = ZoneInfo(settings.wedding_timezone)
+    except ZoneInfoNotFoundError:
+        wedding_timezone = ZoneInfo("Europe/Lisbon")
+    if settings.wedding_date.tzinfo is None:
+        return settings.wedding_date.replace(tzinfo=wedding_timezone)
+    return settings.wedding_date.astimezone(wedding_timezone)
 
 
 def valid_logo_path(value: str, current_value: str = "") -> bool:
@@ -172,6 +214,7 @@ def planning_updates(form: dict[str, str], submitted_version: int) -> dict[str, 
             "dashboard_show_finance": checked(form, "dashboard_show_finance"),
             "dashboard_show_activity": checked(form, "dashboard_show_activity"),
             "dashboard_show_moodboard": checked(form, "dashboard_show_moodboard"),
+            "motion_preference": form.get("motion_preference", "full"),
             "settings_version": submitted_version,
         }
     )
@@ -396,6 +439,69 @@ def dynamic_manifest() -> JSONResponse:
         )
 
 
+@router.get("/api/dashboard-summary", include_in_schema=False)
+def dashboard_summary(request: Request) -> Response:
+    """Return small, no-cache live values for targeted dashboard refreshes."""
+
+    with SessionLocal() as db:
+        if authenticated_user(db, request) is None:
+            return JSONResponse({"detail": "Sessão necessária."}, status_code=401)
+        settings = get_project_settings(db, user_id=request.session["user_id"])
+        assert settings is not None
+        stats, finance = planning_snapshot(db, settings)
+        target = localized_wedding_target(settings)
+        activity_rows = db.execute(
+            select(Activity, User.name.label("user_name"))
+            .outerjoin(User, Activity.user_id == User.id)
+            .order_by(Activity.occurred_at.desc())
+            .limit(6)
+        ).all()
+        payload = {
+            "confirmed_guests": stats["confirmed_guests"],
+            "guest_target": settings.guest_target,
+            "guests": stats["guests"],
+            "task_percentage": stats["task_percentage"],
+            "completed_tasks": stats["completed_tasks"],
+            "tasks": stats["tasks"],
+            "currency_symbol": CURRENCY_SYMBOLS.get(
+                settings.currency,
+                settings.currency,
+            ),
+            "expenses": format(finance["expenses"], ".2f"),
+            "categories": finance["categories"],
+            "budget_total": format(finance["total"], ".2f"),
+            "budget_allocated": format(finance["allocated"], ".2f"),
+            "budget_pending": format(finance["pending"], ".2f"),
+            "budget_remaining": format(finance["remaining"], ".2f"),
+            "budget_percentage": finance["percentage"],
+            "budget_progress": finance["progress_percentage"],
+            "budget_alert": (
+                settings.budget_alert_percent > 0
+                and finance["percentage"] >= settings.budget_alert_percent
+            ),
+            "budget_alert_percent": settings.budget_alert_percent,
+            "wedding_target": target.isoformat() if target else None,
+            "wedding_timezone": settings.wedding_timezone,
+            "activities": [
+                {
+                    "id": activity.id,
+                    "user_name": user_name or "Sistema",
+                    "description": activity.description,
+                    "occurred_at": (
+                        activity.occurred_at.replace(tzinfo=UTC).isoformat()
+                        if activity.occurred_at.tzinfo is None
+                        else activity.occurred_at.isoformat()
+                    ),
+                }
+                for activity, user_name in activity_rows
+            ],
+        }
+    return JSONResponse(
+        payload,
+        headers={"Cache-Control": "private, no-store, max-age=0"},
+    )
+
+
 @router.get("/activity", response_class=HTMLResponse, include_in_schema=False)
 def activity_history(
     request: Request,
@@ -502,33 +608,7 @@ def home(request: Request) -> Response:
         activities = db.scalars(
             select(Activity).order_by(Activity.occurred_at.desc()).limit(6)
         ).all()
-        stats = {
-            "guests": db.scalar(
-                select(func.count()).select_from(Guest).where(Guest.is_archived.is_(False))
-            ),
-            "confirmed_guests": db.scalar(
-                select(func.count())
-                .select_from(Guest)
-                .where(Guest.is_archived.is_(False), Guest.rsvp_status == "Confirmado")
-            ),
-            "tasks": db.scalar(
-                select(func.count()).select_from(Task).where(Task.is_archived.is_(False))
-            ),
-            "completed_tasks": db.scalar(
-                select(func.count())
-                .select_from(Task)
-                .where(Task.is_archived.is_(False), Task.status == "Concluído")
-            ),
-            "categories": db.scalar(
-                select(func.count())
-                .select_from(BudgetCategory)
-                .where(BudgetCategory.is_archived.is_(False))
-            ),
-        }
-        stats["task_percentage"] = (
-            int(stats["completed_tasks"] / stats["tasks"] * 100) if stats["tasks"] else 0
-        )
-        finance = financial_summary(db, decimal_or_zero(settings.total_budget))
+        stats, finance = planning_snapshot(db, settings)
         users = db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.name)).all()
         user_names = dict(db.execute(select(User.id, User.name)).all())
         moodboard_items = db.scalars(
@@ -588,19 +668,15 @@ def home(request: Request) -> Response:
                 }
             )
         countdown = None
-        if settings.wedding_date:
-            target = settings.wedding_date
-            target = (
-                target.replace(tzinfo=wedding_timezone)
-                if target.tzinfo is None
-                else target.astimezone(wedding_timezone)
-            )
+        target = localized_wedding_target(settings)
+        if target:
             raw_seconds = int((target - datetime.now(wedding_timezone)).total_seconds())
             seconds = max(0, raw_seconds)
             countdown = {
                 "days": seconds // 86_400,
                 "hours": seconds % 86_400 // 3_600,
                 "minutes": seconds % 3_600 // 60,
+                "seconds": seconds % 60,
                 "date": target,
                 "is_past": raw_seconds <= 0,
             }

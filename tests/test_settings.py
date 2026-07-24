@@ -102,6 +102,7 @@ def test_planning_checkboxes_are_explicitly_persisted() -> None:
             "reminders_enabled": "true",
             "default_assignee": "Leonor",
             "default_task_priority": "Alta",
+            "motion_preference": "reduced",
             "dashboard_show_countdown": "true",
             "dashboard_show_activity": "true",
         },
@@ -111,6 +112,20 @@ def test_planning_checkboxes_are_explicitly_persisted() -> None:
     assert updates["reminders_enabled"] is True
     assert updates["dashboard_show_finance"] is False
     assert updates["dashboard_show_moodboard"] is False
+    assert updates["motion_preference"] == "reduced"
+
+
+def test_unknown_motion_preference_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        planning_updates(
+            {
+                "language": "pt-PT",
+                "reminder_days_before": "7",
+                "default_task_priority": "Média",
+                "motion_preference": "cinematic",
+            },
+            submitted_version=3,
+        )
 
 
 def test_project_settings_repository_keeps_a_single_row() -> None:

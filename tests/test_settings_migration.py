@@ -47,7 +47,7 @@ def test_advanced_settings_migration_preserves_existing_values(
                 text(
                     """
                     SELECT project_name, total_budget, wedding_date,
-                           accent_color, settings_version
+                           accent_color, motion_preference, settings_version
                     FROM project_settings
                     WHERE id = 1
                     """
@@ -70,6 +70,7 @@ def test_advanced_settings_migration_preserves_existing_values(
     assert row.total_budget == "25000.00"
     assert row.wedding_date.startswith("2026-09-14")
     assert row.accent_color == "#C9A46A"
+    assert row.motion_preference == "full"
     assert row.settings_version == 1
     assert user.name == "Vítor"
     assert user.password_hash == "hash-preservado"
