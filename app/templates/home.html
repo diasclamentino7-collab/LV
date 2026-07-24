@@ -4,13 +4,13 @@
 {% block title %}Visão geral · {{ app_name }}{% endblock %}
 {% block content %}
   <section class="page-intro">
-    <div><p class="eyebrow">O vosso dia, à vossa maneira</p><h1>Bom dia, Leonor <span>♡</span></h1><p class="intro-copy">Tudo o que precisam para criar um casamento memorável, num só lugar.</p></div>
-    <button class="primary-button">+ Adicionar ao plano</button>
+    <div><p class="eyebrow">O vosso dia, à vossa maneira</p><h1>Bom dia, {{ couple_names }} <span>♡</span></h1><p class="intro-copy">Tudo o que precisam para criar um casamento memorável, num só lugar.</p></div>
+    <a class="primary-button" href="/checklist/new">+ Adicionar ao plano</a>
   </section>
 
   <section class="countdown card">
-    <div class="countdown-copy"><p class="eyebrow">O grande dia</p><h2>Estamos quase lá.</h2><p>14 de setembro de 2026 · Quinta da Pacheca</p></div>
-    <div class="countdown-numbers"><div><strong>416</strong><span>dias</span></div><i></i><div><strong>09</strong><span>meses</span></div><i></i><div><strong>23</strong><span>horas</span></div></div>
+    <div class="countdown-copy"><p class="eyebrow">O grande dia</p><h2>{% if countdown %}Estamos quase lá.{% else %}Definam a data do casamento.{% endif %}</h2><p>{% if countdown %}{{ countdown.date.strftime('%d/%m/%Y') }}{% else %}<a href="/settings">Definir data nas Configurações</a>{% endif %}</p></div>
+    <div class="countdown-numbers"><div><strong>{{ countdown.days if countdown else '—' }}</strong><span>dias</span></div><i></i><div><strong>{{ countdown.hours if countdown else '—' }}</strong><span>horas</span></div></div>
     <span class="flower-mark" aria-hidden="true">✽</span>
   </section>
 
@@ -28,7 +28,7 @@
     {% call card('Visão do orçamento', 'Acompanhem cada escolha com leveza.', 'budget-card') %}
       <div class="budget-total"><span>Total planeado</span><strong>€0,00</strong><small>de €0,00</small></div>
       {{ progress('Ainda por atribuir', '€0,00', 0, 'gold') }}
-      <a class="card-link" href="#">Ver orçamento <span>→</span></a>
+      <a class="card-link" href="/budget">Ver orçamento <span>→</span></a>
     {% endcall %}
   </section>
 

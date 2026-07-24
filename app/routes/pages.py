@@ -148,6 +148,25 @@ MODULES = {
             Field("event_date", "Data", "date"),
         ),
     ),
+    "quinta": Module(
+        "quinta",
+        "Quinta",
+        "Locais, contactos e referências para a receção.",
+        None,
+        (
+            Field("title", "Nome do local"),
+            Field("location", "Zona / Localização"),
+            Field("contact", "Contacto"),
+            Field("source_url", "URL", "url"),
+            Field("description", "Notas", "textarea"),
+            Field(
+                "status",
+                "Estado",
+                "select",
+                ("A pesquisar", "Visitada", "Pré-selecionada", "Escolhida"),
+            ),
+        ),
+    ),
 }
 for slug, title in {
     "table-plan": "Plano de Mesas",
