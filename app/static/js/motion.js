@@ -105,9 +105,13 @@
     modalTriggers: new WeakMap(),
     modalIsolation: new WeakMap(),
     modalStack: [],
+    formBaselines: new WeakMap(),
     highlightTimers: new WeakMap(),
     toastRegion: null,
     parallaxFrame: 0,
+    routeTimer: 0,
+    routeNavigationInProgress: false,
+    navigationApproved: false,
     systemPreferenceChanged: null,
     pointerCapabilityChanged: null,
     refreshRequested: null,
@@ -263,6 +267,311 @@
       return Array.from(target).filter(isElement);
     }
     return [];
+  }
+
+  function isTrackedForm(form) {
+    if (!form || form.nodeName !== "FORM") {
+      return false;
+    }
+    var method = String(form.getAttribute("method") || "get").toLowerCase();
+    if (method === "get" || form.getAttribute("data-dirty-check") === "false") {
+      return false;
+    }
+    return Boolean(
+      form.querySelector(
+        [
+          "input:not([type='hidden']):not([type='submit']):not([type='button'])",
+          "select",
+          "textarea",
+        ].join(",")
+      )
+    );
+  }
+
+  function formSignature(form) {
+    return Array.from(form.elements)
+      .filter(function (control) {
+        if (!control.name || control.disabled) {
+          return false;
+        }
+        return ["button", "submit", "reset"].indexOf(control.type) < 0;
+      })
+      .map(function (control) {
+        var value = control.value;
+        if (control.type === "checkbox" || control.type === "radio") {
+          value = control.checked ? "checked:" + control.value : "unchecked";
+        } else if (control.type === "file") {
+          value = Array.from(control.files || [])
+            .map(function (file) {
+              return [file.name, file.size, file.lastModified].join(":");
+            })
+            .join("|");
+        } else if (control.multiple && control.options) {
+          value = Array.from(control.selectedOptions || [])
+            .map(function (option) {
+              return option.value;
+            })
+            .join("|");
+        }
+        return [control.name, control.type, value].join("\u001f");
+      })
+      .join("\u001e");
+  }
+
+  function registerDirtyForms(scope) {
+    elementsWithin(scope, "form").forEach(function (form) {
+      if (!isTrackedForm(form) || state.formBaselines.has(form)) {
+        return;
+      }
+      state.formBaselines.set(form, formSignature(form));
+    });
+  }
+
+  function updateFormDirtyState(form) {
+    if (!isTrackedForm(form)) {
+      return;
+    }
+    if (!state.formBaselines.has(form)) {
+      state.formBaselines.set(form, formSignature(form));
+      return;
+    }
+    var dirty = state.formBaselines.get(form) !== formSignature(form);
+    form.toggleAttribute("data-motion-dirty", dirty);
+  }
+
+  function hasDirtyForms() {
+    return Boolean(doc.querySelector("form[data-motion-dirty]"));
+  }
+
+  function approveDirtyNavigation(destination) {
+    if (!hasDirtyForms()) {
+      return true;
+    }
+    var approved = window.confirm(
+      "Existem alterações por guardar. Queres sair desta página sem as guardar?"
+    );
+    if (!approved) {
+      return false;
+    }
+    state.navigationApproved = true;
+    emit("lv:motion:navigation-confirmed", {
+      destination: destination,
+    });
+    return true;
+  }
+
+  function normalizedPath(pathname) {
+    var clean = String(pathname || "/").replace(/\/+$/, "");
+    return clean || "/";
+  }
+
+  function isDashboardLocation(locationLike) {
+    var path = normalizedPath(locationLike.pathname);
+    return path === "/" || path === "/dashboard";
+  }
+
+  function routeEntryKind() {
+    return rootElement.getAttribute("data-route-entry") || "";
+  }
+
+  function clearRouteExit() {
+    if (state.routeTimer) {
+      window.clearTimeout(state.routeTimer);
+      state.routeTimer = 0;
+    }
+    state.routeNavigationInProgress = false;
+    state.navigationApproved = false;
+    rootElement.classList.remove("is-lv-route-leaving");
+    rootElement.removeAttribute("data-route-leaving");
+    var page = doc.querySelector(SELECTORS.page);
+    if (page) {
+      page.removeAttribute("aria-busy");
+    }
+  }
+
+  function finishRouteArrival() {
+    var entry = routeEntryKind();
+    if (!entry) {
+      return;
+    }
+    var mode = state.effectiveMode;
+    var isHome = entry === "home" && isDashboardLocation(window.location);
+    var duration =
+      mode === "none" ? 0 : mode === "reduced" ? 140 : isHome ? 460 : 190;
+    window.setTimeout(function () {
+      rootElement.removeAttribute("data-route-entry");
+      if (isHome) {
+        var main = doc.querySelector("#main-content");
+        if (main) {
+          main.focus({ preventScroll: true });
+        }
+      }
+      emit("lv:motion:route-entered", {
+        kind: entry,
+        destination: window.location.href,
+      });
+    }, duration);
+  }
+
+  function storeRouteEntry(kind) {
+    try {
+      window.sessionStorage.setItem(
+        "lv-route-transition",
+        JSON.stringify({ kind: kind, at: Date.now() })
+      );
+    } catch (_error) {
+      // The visual transition is optional if private storage is unavailable.
+    }
+  }
+
+  function navigate(destination, options) {
+    var settings = options || {};
+    var url;
+    try {
+      url = new URL(destination, window.location.href);
+    } catch (_error) {
+      return false;
+    }
+    if (
+      url.origin !== window.location.origin ||
+      (url.protocol !== "http:" && url.protocol !== "https:")
+    ) {
+      return false;
+    }
+    if (
+      settings.confirmDirty !== false &&
+      !approveDirtyNavigation(url.href)
+    ) {
+      return false;
+    }
+
+    var kind = settings.kind === "home" ? "home" : "subtle";
+    storeRouteEntry(kind);
+
+    if (state.routeNavigationInProgress) {
+      window.clearTimeout(state.routeTimer);
+      window.location.assign(url.href);
+      return true;
+    }
+
+    state.routeNavigationInProgress = true;
+    rootElement.setAttribute("data-route-leaving", kind);
+    rootElement.classList.add("is-lv-route-leaving");
+    var page = doc.querySelector(SELECTORS.page);
+    if (page) {
+      page.setAttribute("aria-busy", "true");
+    }
+    emit("lv:motion:route-leaving", {
+      kind: kind,
+      destination: url.href,
+    });
+
+    var delay =
+      state.effectiveMode === "none"
+        ? 0
+        : state.effectiveMode === "reduced"
+          ? 70
+          : kind === "home"
+            ? 220
+            : 90;
+    state.routeTimer = window.setTimeout(function () {
+      window.location.assign(url.href);
+    }, delay);
+    return true;
+  }
+
+  function pulseHomeBrand(brand) {
+    if (!brand || state.effectiveMode === "none") {
+      return;
+    }
+    brand.classList.remove("is-home-brand-pulse");
+    void brand.offsetWidth;
+    brand.classList.add("is-home-brand-pulse");
+    window.setTimeout(function () {
+      brand.classList.remove("is-home-brand-pulse");
+    }, state.effectiveMode === "reduced" ? 150 : 420);
+  }
+
+  function isSkippedRouteLink(anchor, event) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      anchor.hasAttribute("download")
+    ) {
+      return true;
+    }
+    var target = String(anchor.getAttribute("target") || "").toLowerCase();
+    if (target && target !== "_self") {
+      return true;
+    }
+    var rawHref = String(anchor.getAttribute("href") || "").trim();
+    if (
+      !rawHref ||
+      rawHref.charAt(0) === "#" ||
+      /^(mailto|tel|javascript):/i.test(rawHref)
+    ) {
+      return true;
+    }
+    return (
+      /\.pdf(?:$|[?#])/i.test(rawHref) ||
+      anchor.hasAttribute("data-export") ||
+      anchor.getAttribute("rel") === "external"
+    );
+  }
+
+  function handleRouteLinkClick(event) {
+    var anchor = event.target.closest(
+      "a[data-motion-home],a.nav-item,.breadcrumb a"
+    );
+    if (!anchor || isSkippedRouteLink(anchor, event)) {
+      return false;
+    }
+    var url;
+    try {
+      url = new URL(anchor.href, window.location.href);
+    } catch (_error) {
+      return false;
+    }
+    if (
+      url.origin !== window.location.origin ||
+      (url.protocol !== "http:" && url.protocol !== "https:")
+    ) {
+      return false;
+    }
+
+    var isHomeBrand = anchor.hasAttribute("data-motion-home");
+    if (isHomeBrand && isDashboardLocation(window.location)) {
+      event.preventDefault();
+      pulseHomeBrand(anchor);
+      return true;
+    }
+
+    var sameLocation =
+      normalizedPath(url.pathname) ===
+        normalizedPath(window.location.pathname) &&
+      url.search === window.location.search &&
+      url.hash === window.location.hash;
+    if (sameLocation) {
+      event.preventDefault();
+      highlight(anchor, { duration: 260 });
+      return true;
+    }
+
+    if (!approveDirtyNavigation(url.href)) {
+      event.preventDefault();
+      anchor.focus();
+      return true;
+    }
+    event.preventDefault();
+    navigate(url.href, {
+      kind: isHomeBrand ? "home" : "subtle",
+      confirmDirty: false,
+    });
+    return true;
   }
 
   function autoEnhance(scope) {
@@ -1315,6 +1624,7 @@
     elementsWithin(container, SELECTORS.chartSegment).forEach(
       prepareChartSegment
     );
+    registerDirtyForms(container);
 
     scheduleParallax();
     return container;
@@ -1397,6 +1707,10 @@
   }
 
   function onDocumentClick(event) {
+    if (handleRouteLinkClick(event)) {
+      return;
+    }
+
     var opener = event.target.closest("[data-motion-modal-open]");
     if (opener) {
       event.preventDefault();
@@ -1446,9 +1760,48 @@
     scheduleParallax();
   }
 
+  function onFormValueChanged(event) {
+    var form = event.target && event.target.closest("form");
+    if (form) {
+      updateFormDirtyState(form);
+    }
+  }
+
+  function onFormSubmitted(event) {
+    var form = event.target;
+    if (!isTrackedForm(form)) {
+      return;
+    }
+    state.formBaselines.set(form, formSignature(form));
+    form.removeAttribute("data-motion-dirty");
+  }
+
+  function onFormReset(event) {
+    var form = event.target;
+    window.requestAnimationFrame(function () {
+      updateFormDirtyState(form);
+    });
+  }
+
+  function onBeforeUnload(event) {
+    if (state.navigationApproved || !hasDirtyForms()) {
+      return;
+    }
+    event.preventDefault();
+    event.returnValue = "";
+  }
+
+  function onPageShow() {
+    clearRouteExit();
+  }
+
   function addGlobalListeners() {
     doc.addEventListener("click", onDocumentClick);
     doc.addEventListener("keydown", trapModalKeyboard);
+    doc.addEventListener("input", onFormValueChanged);
+    doc.addEventListener("change", onFormValueChanged);
+    doc.addEventListener("submit", onFormSubmitted);
+    doc.addEventListener("reset", onFormReset);
     doc.addEventListener("visibilitychange", onVisibilityChange);
     doc.addEventListener("lv:motion:update", onMotionUpdate);
     state.refreshRequested = function (event) {
@@ -1475,6 +1828,8 @@
     );
     window.addEventListener("scroll", scheduleParallax, { passive: true });
     window.addEventListener("resize", scheduleParallax, { passive: true });
+    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("pageshow", onPageShow);
 
     state.systemPreferenceChanged = function () {
       setMode(state.requestedMode);
@@ -1508,6 +1863,7 @@
     refresh(doc);
     rootElement.classList.add("motion-system-ready");
     addGlobalListeners();
+    finishRouteArrival();
     window.requestAnimationFrame(function () {
       scheduleParallax();
       emit("lv:motion:ready", { api: api, mode: getMode() });
@@ -1548,6 +1904,10 @@
     });
     doc.removeEventListener("click", onDocumentClick);
     doc.removeEventListener("keydown", trapModalKeyboard);
+    doc.removeEventListener("input", onFormValueChanged);
+    doc.removeEventListener("change", onFormValueChanged);
+    doc.removeEventListener("submit", onFormSubmitted);
+    doc.removeEventListener("reset", onFormReset);
     doc.removeEventListener("visibilitychange", onVisibilityChange);
     doc.removeEventListener("lv:motion:update", onMotionUpdate);
     doc.removeEventListener("lv:motion:refresh", state.refreshRequested);
@@ -1559,6 +1919,12 @@
     );
     window.removeEventListener("scroll", scheduleParallax);
     window.removeEventListener("resize", scheduleParallax);
+    window.removeEventListener("beforeunload", onBeforeUnload);
+    window.removeEventListener("pageshow", onPageShow);
+    if (state.routeTimer) {
+      window.clearTimeout(state.routeTimer);
+      state.routeTimer = 0;
+    }
     if (typeof reduceQuery.removeEventListener === "function") {
       reduceQuery.removeEventListener(
         "change",
@@ -1590,6 +1956,7 @@
     openModal: openModal,
     closeModal: closeModal,
     toast: toast,
+    navigate: navigate,
     setMode: setMode,
     getMode: getMode,
     destroy: destroy,

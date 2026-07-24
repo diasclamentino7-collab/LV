@@ -1,7 +1,9 @@
 {% extends "base.html" %}
+{% from "_components.html" import permanent_delete_form %}
 {% block title %}Orçamento · {{ display_app_name|default(app_name) }}{% endblock %}
 {% block styles %}
   <link rel="stylesheet" href="{{ url_for('static', path='css/budget.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/deletion.css') }}">
 {% endblock %}
 {% block content %}
 <section class="page-intro budget-intro" data-motion-list>
@@ -11,6 +13,12 @@
     <p class="intro-copy">Uma visão rigorosa do que planearam, gastaram e ainda têm disponível.</p>
   </div>
   <div class="page-actions">
+    <a
+      class="secondary-button"
+      href="/exports/budget.pdf?q={{ search|urlencode }}&archived={{ 'true' if show_archived else 'false' }}"
+      download
+      data-export
+    >Exportar PDF</a>
     <a class="secondary-button" href="/budget?archived={{ 'false' if show_archived else 'true' }}">
       {{ 'Ver ativos' if show_archived else 'Ver eliminados' }}
     </a>
@@ -18,6 +26,8 @@
       <a class="secondary-button" href="/expenses">Despesas</a>
       <a class="secondary-button" href="/payments">Pagamentos</a>
       <a class="primary-button" href="/budget/new">+ Nova categoria</a>
+    {% else %}
+      <a class="secondary-button" href="/deleted">Todos os eliminados</a>
     {% endif %}
   </div>
 </section>
@@ -27,6 +37,7 @@
     {% if message == 'created' %}Categoria criada e incluída nos totais.
     {% elif message == 'updated' %}Categoria atualizada e valores recalculados.
     {% elif message == 'restored' %}Categoria recuperada com sucesso.
+    {% elif message == 'permanently_deleted' %}Categoria removida definitivamente da interface. A cópia técnica continua preservada.
     {% else %}Categoria retirada da visão ativa. Os dados continuam preservados.
     {% endif %}
   </div>
@@ -34,6 +45,8 @@
 {% if error %}
   <div class="form-error">
     {% if error == 'invalid' %}Não foi possível guardar. Confirmem se o nome da categoria é único e se o limite é válido.
+    {% elif error == 'confirmation' %}Confirmação inválida. Escreva APAGAR exatamente como indicado.
+    {% elif error == 'not_archived' %}Só é possível apagar definitivamente uma categoria que já esteja nos eliminados.
     {% else %}A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.
     {% endif %}
   </div>
@@ -341,6 +354,7 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button>Recuperar</button>
         </form>
+        {{ permanent_delete_form('budget', record.id, csrf_token) }}
       </div>
     </article>
     {% endfor %}

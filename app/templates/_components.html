@@ -8,3 +8,31 @@
 {% macro progress(label, value, percent, color='pink', live_key='') %}
 <div class="progress-row"><div class="progress-label"><span>{{ label }}</span><strong{% if live_key %} data-live-key="{{ live_key }}" data-live-value="{{ percent }}" data-motion-number{% endif %}>{{ value }}</strong></div><div class="progress-track" role="progressbar" aria-label="{{ label }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percent }}"><span class="progress-fill {{ color }}" data-motion-progress{% if live_key %} data-live-progress{% endif %} style="width: {{ percent }}%"></span></div></div>
 {% endmacro %}
+
+{% macro permanent_delete_form(slug, record_id, csrf_token, return_to='') %}
+<details class="permanent-delete">
+  <summary>Apagar definitivamente</summary>
+  <div class="permanent-delete-panel">
+    <strong>Esta ação é definitiva na aplicação.</strong>
+    <p>O registo deixará de aparecer e não poderá ser recuperado pela interface. Uma cópia técnica de segurança será preservada.</p>
+    <form
+      method="post"
+      action="/{{ slug }}/{{ record_id }}/delete-permanently{% if return_to %}?return_to={{ return_to }}{% endif %}"
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>
+        Para confirmar, escreva <b>APAGAR</b>
+        <input
+          name="confirmation"
+          required
+          pattern="APAGAR"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+        >
+      </label>
+      <button class="danger-button" type="submit">Apagar definitivamente</button>
+    </form>
+  </div>
+</details>
+{% endmacro %}

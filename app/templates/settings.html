@@ -704,7 +704,20 @@
               <span aria-hidden="true">✓</span>
               <p><strong>Exportação segura</strong><small>A exportação não altera nem elimina qualquer registo.</small></p>
             </div>
-            <a class="primary-button settings-wide-button" href="/settings/export" download>Exportar dados</a>
+            <div class="settings-panel-actions">
+              <a
+                class="primary-button settings-wide-button"
+                href="/settings/export.pdf"
+                download
+                data-export
+              >Exportar dados em PDF</a>
+              <a
+                class="secondary-button settings-wide-button"
+                href="/settings/export"
+                download
+                data-export
+              >Descarregar cópia técnica JSON</a>
+            </div>
           </div>
 
           <div class="settings-account-panel settings-pwa-panel">
@@ -787,6 +800,9 @@
       if (!dirtyForms.size) return;
       event.preventDefault();
       event.returnValue = "";
+    });
+    document.addEventListener("lv:motion:navigation-confirmed", () => {
+      dirtyForms.clear();
     });
 
     const installButton = document.getElementById("install-app");

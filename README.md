@@ -70,6 +70,7 @@ em `/api/health`.
 | Moodboard | `/moodboard` |
 | Comunicação | `/communication` |
 | Histórico de atividade | `/activity` |
+| Todos os eliminados | `/deleted` |
 | Configurações | `/settings` |
 
 As rotas históricas `/ceremony` e `/quinta` são mantidas por compatibilidade e
@@ -86,14 +87,22 @@ Em `/settings` é possível gerir, por secções independentes:
 - cores aplicadas em toda a interface;
 - responsável e prioridade predefinidos, lembretes e blocos do dashboard;
 - intensidade de movimento: completa, reduzida ou sem animações;
-- colaboradores, alteração de password, instalação PWA e exportação JSON;
+- colaboradores, alteração de password, instalação PWA e exportações PDF/JSON;
 - proteção contra alterações concorrentes, aviso de moeda sem conversão e
   confirmação antes de abandonar formulários por guardar.
 
 Cada gravação fica registada no histórico de atividade. Um controlo de versão
 impede que um formulário antigo substitua silenciosamente alterações feitas
-pela outra pessoa. A exportação em `/settings/export` inclui os dados de
-planeamento, mas exclui todos os dados internos de autenticação.
+pela outra pessoa. O relatório legível em `/settings/export.pdf` e os PDFs de
+cada módulo em `/exports/<modulo>.pdf` excluem passwords e dados internos de
+autenticação. A cópia técnica JSON anterior continua disponível em
+`/settings/export` para recuperação e compatibilidade.
+
+Os registos eliminados ficam inicialmente recuperáveis. Em `/deleted`, ou na
+vista de eliminados de cada módulo, podem ser recuperados ou removidos
+definitivamente da interface após escrever `APAGAR`. A remoção definitiva cria
+uma marca e um snapshot técnico de auditoria, sem apagar fisicamente a linha ou
+quebrar despesas, pagamentos e outras relações existentes.
 
 O histórico em `/activity` identifica utilizador, data/hora, módulo, ação e
 descrição, com filtros combináveis. É apenas de leitura e mostra até 250
@@ -118,6 +127,12 @@ A preferência **Reduzir movimento** do sistema operativo tem sempre prioridade.
 Mesmo que seja escolhido movimento completo nas Configurações, a aplicação
 reduz os efeitos quando `prefers-reduced-motion` está ativo. Com **Sem
 animações**, todas as páginas e ações continuam completamente funcionais.
+
+O bloco **LV – Wedding Planner** regressa ao Dashboard através de uma transição
+cinematográfica curta e centralizada. Se o Dashboard já estiver aberto, não há
+reload: apenas uma confirmação visual no próprio logótipo. Formulários alterados
+pedem confirmação antes de qualquer navegação e o efeito é automaticamente
+reduzido no telemóvel ou quando `prefers-reduced-motion` está ativo.
 
 O Dashboard consulta periodicamente um resumo autenticado e sem cache. Quando
 outra pessoa altera convidados, checklist, orçamento ou data do casamento,

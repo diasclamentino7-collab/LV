@@ -1,10 +1,11 @@
-const CACHE = "lv-wedding-v3";
+const CACHE = "lv-wedding-v5";
 const ASSETS = [
   "/static/css/app.css",
   "/static/css/motion.css",
   "/static/css/communication-drawer.css",
   "/static/css/moodboard-motion.css",
   "/static/css/budget.css",
+  "/static/css/deletion.css",
   "/static/js/motion.js",
   "/static/js/app.js",
   "/static/js/dashboard.js",

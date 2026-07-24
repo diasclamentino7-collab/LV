@@ -9,14 +9,20 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.core import Activity, ProjectSettings, User, WorkspaceRecord
-from app.models.moodboard import MoodboardBoard, MoodboardCollection, MoodboardItem
+from app.models.core import Activity, ProjectSettings, RecordTombstone, User, WorkspaceRecord
+from app.models.moodboard import (
+    MoodboardBoard,
+    MoodboardCollection,
+    MoodboardInspirationPlacement,
+    MoodboardItem,
+)
 from app.models.planning import BudgetCategory, Expense, Guest, LegalDocument, Payment, Task, Vendor
 
 EXPORT_MODELS = (
     ProjectSettings,
     User,
     Activity,
+    RecordTombstone,
     WorkspaceRecord,
     Task,
     Guest,
@@ -28,6 +34,7 @@ EXPORT_MODELS = (
     MoodboardBoard,
     MoodboardCollection,
     MoodboardItem,
+    MoodboardInspirationPlacement,
 )
 PUBLIC_USER_COLUMNS = frozenset(
     {

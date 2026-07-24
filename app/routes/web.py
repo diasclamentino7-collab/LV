@@ -32,6 +32,7 @@ from app.services.auth_session import authenticated_user
 from app.services.csrf import valid_csrf_token
 from app.services.data_export import build_data_export
 from app.services.finance import financial_summary
+from app.services.record_deletion import not_tombstoned
 
 router = APIRouter()
 SETTINGS_SECTIONS = frozenset({"identity", "event", "finance", "appearance", "planning"})
@@ -64,20 +65,32 @@ def planning_snapshot(db, settings: ProjectSettings) -> tuple[dict[str, int], di
 
     stats = {
         "guests": db.scalar(
-            select(func.count()).select_from(Guest).where(Guest.is_archived.is_(False))
+            select(func.count())
+            .select_from(Guest)
+            .where(Guest.is_archived.is_(False), not_tombstoned(Guest))
         ),
         "confirmed_guests": db.scalar(
             select(func.count())
             .select_from(Guest)
-            .where(Guest.is_archived.is_(False), Guest.rsvp_status == "Confirmado")
+            .where(
+                Guest.is_archived.is_(False),
+                Guest.rsvp_status == "Confirmado",
+                not_tombstoned(Guest),
+            )
         ),
         "tasks": db.scalar(
-            select(func.count()).select_from(Task).where(Task.is_archived.is_(False))
+            select(func.count())
+            .select_from(Task)
+            .where(Task.is_archived.is_(False), not_tombstoned(Task))
         ),
         "completed_tasks": db.scalar(
             select(func.count())
             .select_from(Task)
-            .where(Task.is_archived.is_(False), Task.status == "Concluído")
+            .where(
+                Task.is_archived.is_(False),
+                Task.status == "Concluído",
+                not_tombstoned(Task),
+            )
         ),
     }
     stats["task_percentage"] = (
@@ -268,12 +281,20 @@ def settings_page(request: Request) -> Response:
             "confirmed_guests": db.scalar(
                 select(func.count())
                 .select_from(Guest)
-                .where(Guest.is_archived.is_(False), Guest.rsvp_status == "Confirmado")
+                .where(
+                    Guest.is_archived.is_(False),
+                    Guest.rsvp_status == "Confirmado",
+                    not_tombstoned(Guest),
+                )
             ),
             "open_tasks": db.scalar(
                 select(func.count())
                 .select_from(Task)
-                .where(Task.is_archived.is_(False), Task.status != "Concluído")
+                .where(
+                    Task.is_archived.is_(False),
+                    Task.status != "Concluído",
+                    not_tombstoned(Task),
+                )
             ),
         }
         db.expunge(settings)
@@ -623,6 +644,7 @@ def home(request: Request) -> Response:
                 Task.is_archived.is_(False),
                 Task.status != "Concluído",
                 Task.due_date.is_not(None),
+                not_tombstoned(Task),
             )
             .order_by(Task.due_date, Task.priority.desc())
             .limit(6)
@@ -637,6 +659,7 @@ def home(request: Request) -> Response:
             .where(
                 Payment.is_archived.is_(False),
                 Payment.status == "Pendente",
+                not_tombstoned(Payment),
             )
             .order_by(Payment.payment_date)
             .limit(4)

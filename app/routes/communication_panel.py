@@ -14,6 +14,7 @@ from app.models.core import User, WorkspaceRecord
 from app.services.activity import record_activity
 from app.services.auth_session import authenticated_user
 from app.services.csrf import valid_csrf_token
+from app.services.record_deletion import not_tombstoned
 
 router = APIRouter(prefix="/api/communication-panel", tags=["communication"])
 
@@ -75,6 +76,7 @@ def recent_communication(
             .where(
                 WorkspaceRecord.module == "communication",
                 WorkspaceRecord.is_archived.is_(False),
+                not_tombstoned(WorkspaceRecord),
             )
         )
         search = q.strip()

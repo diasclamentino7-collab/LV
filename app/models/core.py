@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampedModel
@@ -59,6 +68,40 @@ class WorkspaceRecord(TimestampedModel, Base):
     event_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attachment_path: Mapped[str] = mapped_column(String(500), default="")
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+
+class RecordTombstone(Base):
+    """Append-only marker for records removed permanently from the interface.
+
+    The domain row itself is deliberately retained.  This marker hides it from
+    everyday views while keeping an immutable snapshot and deletion audit trail
+    available for technical recovery.
+    """
+
+    __tablename__ = "record_tombstones"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_type",
+            "entity_id",
+            name="uq_record_tombstones_entity",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    entity_type: Mapped[str] = mapped_column(String(100), index=True)
+    entity_id: Mapped[int] = mapped_column(Integer, index=True)
+    module: Mapped[str] = mapped_column(String(50), index=True)
+    snapshot_json: Mapped[str] = mapped_column(Text)
+    deleted_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+    deleted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        index=True,
+    )
 
 
 class ProjectSettings(TimestampedModel, Base):

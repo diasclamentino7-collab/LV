@@ -81,6 +81,8 @@ def test_settings_save_is_audited_and_stale_forms_are_rejected(monkeypatch) -> N
         assert "/static/js/app.js" in dashboard.text
         assert "data-communication-trigger" in dashboard.text
         assert 'data-motion-tilt="2.4"' in dashboard.text
+        assert "data-motion-home aria-label=" in dashboard.text
+        assert 'href="/deleted"' in dashboard.text
         assert 'href="/settings" aria-label="Abrir Configurações"' in dashboard.text
         assert "current_section == 'settings'" not in dashboard.text
 
@@ -88,6 +90,8 @@ def test_settings_save_is_audited_and_stale_forms_are_rejected(monkeypatch) -> N
         assert page.status_code == 200
         assert "Identidade do casamento" in page.text
         assert "Exportar dados" in page.text
+        assert 'href="/settings/export.pdf"' in page.text
+        assert "Descarregar cópia técnica JSON" in page.text
         assert "Movimento completo" in page.text
         assert "Movimento reduzido" in page.text
         assert "Sem animações" in page.text

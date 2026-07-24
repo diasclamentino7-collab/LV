@@ -1,7 +1,7 @@
 """SQLAlchemy models; import every model here for Alembic discovery."""
 
 from app.db.base import Base
-from app.models.core import Activity, ProjectSettings, User, WorkspaceRecord
+from app.models.core import Activity, ProjectSettings, RecordTombstone, User, WorkspaceRecord
 from app.models.moodboard import (
     MoodboardBoard,
     MoodboardCollection,
@@ -23,6 +23,7 @@ __all__ = [
     "MoodboardItem",
     "Payment",
     "ProjectSettings",
+    "RecordTombstone",
     "Task",
     "User",
     "Vendor",

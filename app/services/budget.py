@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.planning import BudgetCategory, Expense
 from app.services.finance import financial_summary
+from app.services.record_deletion import not_tombstoned
 
 PERCENTAGE_QUANTUM = Decimal("0.01")
 
@@ -55,6 +56,7 @@ def budget_snapshot(
         Expense.category_id == BudgetCategory.id,
         Expense.is_archived.is_(False),
         Expense.status != "Cancelada",
+        not_tombstoned(Expense),
     )
     statement = (
         select(
@@ -62,7 +64,10 @@ def budget_snapshot(
             func.coalesce(func.sum(Expense.amount), 0).label("expense_total"),
         )
         .outerjoin(Expense, expense_join)
-        .where(BudgetCategory.is_archived.is_(False))
+        .where(
+            BudgetCategory.is_archived.is_(False),
+            not_tombstoned(BudgetCategory),
+        )
         .group_by(BudgetCategory.id)
     )
     normalized_search = search.strip()

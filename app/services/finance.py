@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.planning import BudgetCategory, Expense, Payment
+from app.services.record_deletion import not_tombstoned
 
 
 def _decimal(value: object) -> Decimal:
@@ -22,35 +23,45 @@ def financial_summary(db: Session, total_budget: Decimal) -> dict[str, Decimal |
     paid = _decimal(
         db.scalar(
             select(func.coalesce(func.sum(Payment.amount), 0)).where(
-                Payment.is_archived.is_(False), Payment.status == "Pago"
+                Payment.is_archived.is_(False),
+                Payment.status == "Pago",
+                not_tombstoned(Payment),
             )
         )
     )
     pending = _decimal(
         db.scalar(
             select(func.coalesce(func.sum(Payment.amount), 0)).where(
-                Payment.is_archived.is_(False), Payment.status == "Pendente"
+                Payment.is_archived.is_(False),
+                Payment.status == "Pendente",
+                not_tombstoned(Payment),
             )
         )
     )
     expenses = _decimal(
         db.scalar(
             select(func.coalesce(func.sum(Expense.amount), 0)).where(
-                Expense.is_archived.is_(False), Expense.status != "Cancelada"
+                Expense.is_archived.is_(False),
+                Expense.status != "Cancelada",
+                not_tombstoned(Expense),
             )
         )
     )
     allocated = _decimal(
         db.scalar(
             select(func.coalesce(func.sum(BudgetCategory.planned_limit), 0)).where(
-                BudgetCategory.is_archived.is_(False)
+                BudgetCategory.is_archived.is_(False),
+                not_tombstoned(BudgetCategory),
             )
         )
     )
     categories = db.scalar(
         select(func.count())
         .select_from(BudgetCategory)
-        .where(BudgetCategory.is_archived.is_(False))
+        .where(
+            BudgetCategory.is_archived.is_(False),
+            not_tombstoned(BudgetCategory),
+        )
     )
     percentage = int((expenses / total_budget * 100) if total_budget else 0)
     return {

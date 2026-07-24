@@ -10,6 +10,22 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/static/icons/icon.svg">
+    <script>
+      (() => {
+        try {
+          const storedRoute = sessionStorage.getItem("lv-route-transition");
+          if (!storedRoute) return;
+          sessionStorage.removeItem("lv-route-transition");
+          const routeEntry = JSON.parse(storedRoute);
+          const isRecent = Date.now() - Number(routeEntry.at || 0) < 10000;
+          if (isRecent && ["home", "subtle"].includes(routeEntry.kind)) {
+            document.documentElement.dataset.routeEntry = routeEntry.kind;
+          }
+        } catch (_error) {
+          // Session storage is optional; navigation remains fully functional.
+        }
+      })();
+    </script>
     <title>{% block title %}{{ display_app_name|default(app_name) }}{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +43,7 @@
     <div class="app-shell">
       <aside class="sidebar" id="main-navigation" aria-label="Navegação principal" aria-hidden="false">
         <div class="sidebar-heading">
-          <a class="brand" href="/dashboard" aria-label="{{ display_app_name|default('LV Wedding Planner') }}, página inicial">
+          <a class="brand" href="/dashboard" data-motion-home aria-label="{{ display_app_name|default('LV Wedding Planner') }}, regressar ao Dashboard">
             {% if ui_settings is defined and ui_settings.logo_path %}<img class="brand-logo" src="{{ ui_settings.logo_path }}" alt="">{% else %}<span class="brand-mark">LV</span>{% endif %}
             <span class="brand-name">{{ display_app_name|default('LV Wedding Planner') }}</span>
           </a>
@@ -73,12 +89,12 @@
       <div class="main-frame">
         <header class="header">
           <button class="menu-button" type="button" aria-label="Abrir menu" aria-controls="main-navigation" aria-expanded="false">☰</button>
-          {% set section_titles = {'dashboard': 'Visão geral', 'checklist': 'Checklist', 'timeline': 'Cronograma', 'budget': 'Orçamento', 'payments': 'Pagamentos', 'expenses': 'Despesas', 'vendors': 'Fornecedores', 'guests': 'Convidados', 'table-plan': 'Plano de Mesas', 'kingdom-hall': 'Salão do Reino', 'reception': 'Copo de Água', 'legal-process': 'Processo Legal', 'attire': 'Roupa', 'honeymoon': 'Lua de Mel', 'home': 'Casa', 'gifts': 'Presentes', 'documents': 'Documentos', 'moodboard': 'Moodboard', 'communication': 'Comunicação', 'activity': 'Atividade', 'settings': 'Configurações'} %}
+          {% set section_titles = {'dashboard': 'Visão geral', 'checklist': 'Checklist', 'timeline': 'Cronograma', 'budget': 'Orçamento', 'payments': 'Pagamentos', 'expenses': 'Despesas', 'vendors': 'Fornecedores', 'guests': 'Convidados', 'table-plan': 'Plano de Mesas', 'kingdom-hall': 'Salão do Reino', 'reception': 'Copo de Água', 'legal-process': 'Processo Legal', 'attire': 'Roupa', 'honeymoon': 'Lua de Mel', 'home': 'Casa', 'gifts': 'Presentes', 'documents': 'Documentos', 'moodboard': 'Moodboard', 'communication': 'Comunicação', 'activity': 'Atividade', 'deleted': 'Todos os eliminados', 'settings': 'Configurações'} %}
           <div class="breadcrumb"><a href="/dashboard">LV</a><i>/</i><strong>{{ section_titles.get(current_section, 'Visão geral') }}</strong></div>
           <div class="header-actions">
             <a class="icon-button" href="/moodboard" aria-label="Pesquisar inspirações"><span data-motion-icon>⌕</span></a>
             <button class="icon-button notification" type="button" data-motion-action="communication" data-communication-trigger aria-haspopup="dialog" aria-controls="communication-drawer" aria-label="Abrir centro de comunicação"><span data-motion-icon>✦</span></button>
-            <details class="account-menu"><summary class="header-avatar" aria-label="Menu de conta">{{ request.session.get('user_name', 'LV')[:2]|upper }}</summary><div><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><a href="/account/password">Alterar password</a><form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Terminar sessão</button></form></div></details>
+            <details class="account-menu"><summary class="header-avatar" aria-label="Menu de conta">{{ request.session.get('user_name', 'LV')[:2]|upper }}</summary><div><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><a href="/deleted">Todos os eliminados</a><a href="/account/password">Alterar password</a><form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Terminar sessão</button></form></div></details>
           </div>
         </header>
         <main class="content" id="main-content" tabindex="-1" data-motion-page>{% block content %}{% endblock %}</main>

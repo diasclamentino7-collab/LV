@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_components.html" import permanent_delete_form %}
+{% block title %}Todos os eliminados · {{ display_app_name|default(app_name) }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/deletion.css') }}">
+{% endblock %}
+{% block content %}
+<section class="page-intro" data-motion-list>
+  <div>
+    <p class="eyebrow">Segurança dos dados</p>
+    <h1>Todos os eliminados</h1>
+    <p class="intro-copy">Registos retirados das listas, organizados num único local para recuperar ou remover definitivamente da interface.</p>
+  </div>
+  <div class="page-actions">
+    <a class="secondary-button" href="/exports/all.pdf" download data-export>Exportar relatório PDF</a>
+    <a class="secondary-button" href="/dashboard">Voltar ao Dashboard</a>
+  </div>
+</section>
+
+{% if message %}
+<div class="success-banner">
+  {% if message == 'restored' %}Registo recuperado com sucesso.
+  {% elif message == 'permanently_deleted' %}Registo removido definitivamente da interface. A cópia técnica continua preservada.
+  {% endif %}
+</div>
+{% endif %}
+{% if error %}
+<div class="form-error" role="alert">
+  {% if error == 'confirmation' %}Confirmação inválida. Escreva APAGAR exatamente como indicado.
+  {% elif error == 'not_archived' %}O registo já não se encontra na área de eliminados.
+  {% else %}A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.
+  {% endif %}
+</div>
+{% endif %}
+
+<section class="card module-records">
+  <form class="search-bar" method="get">
+    <label class="sr-only" for="deleted-search">Pesquisar em todos os eliminados</label>
+    <input id="deleted-search" name="q" value="{{ search }}" placeholder="Pesquisar em todos os módulos">
+    <button class="secondary-button">Pesquisar</button>
+    {% if search %}<a class="text-button" href="/deleted">Limpar</a>{% endif %}
+  </form>
+
+  {% if records %}
+  <div class="record-list">
+    {% for record in records %}
+    <article class="record-row" data-motion-card>
+      <div>
+        <p class="deleted-module">{{ record.module_title }}</p>
+        <h2>{{ record.label }}</h2>
+        <p>Eliminado da lista · atualizado em {{ record.updated_at.strftime('%d/%m/%Y %H:%M') if record.updated_at else '—' }}</p>
+      </div>
+      <div class="record-actions">
+        <form method="post" action="/{{ record.module_slug }}/{{ record.id }}/restore?return_to=deleted">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button>Recuperar</button>
+        </form>
+        {{ permanent_delete_form(record.module_slug, record.id, csrf_token, 'deleted') }}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-icon">✦</span>
+    <h3>{{ 'Nenhum eliminado corresponde à pesquisa.' if search else 'Não existem registos eliminados.' }}</h3>
+    <p>Os itens que forem retirados das listas aparecerão aqui sem perda de dados.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

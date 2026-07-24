@@ -13,7 +13,7 @@ import app.routes.auth as auth_routes
 import app.routes.pages as page_routes
 from app.db.base import Base
 from app.main import app
-from app.models.core import ProjectSettings, User
+from app.models.core import Activity, ProjectSettings, RecordTombstone, User
 from app.models.planning import BudgetCategory, Expense
 from app.services.security import hash_password
 
@@ -114,6 +114,7 @@ def test_budget_view_uses_real_totals_and_preserves_archived_categories(
         assert "Receção" in page.text
         assert "budget.css" in page.text
         assert "budget.js" in page.text
+        assert 'href="/exports/budget.pdf?' in page.text
 
         response = client.get("/api/budget-summary")
         assert response.status_code == 200
@@ -160,8 +161,62 @@ def test_budget_view_uses_real_totals_and_preserves_archived_categories(
             for category in client.get("/api/budget-summary").json()["categories"]
         )
 
+        deleted_page = client.get("/budget?archived=true")
+        assert "Flores" in deleted_page.text
+        assert "Apagar definitivamente" in deleted_page.text
+
+        rejected_csrf = client.post(
+            f"/budget/{flowers['id']}/delete-permanently",
+            data={"csrf_token": "invalid", "confirmation": "APAGAR"},
+            follow_redirects=False,
+        )
+        assert rejected_csrf.status_code == 303
+        assert rejected_csrf.headers["location"] == "/budget?archived=true&error=csrf"
+        with Session(engine) as db:
+            assert db.scalar(select(RecordTombstone)) is None
+
+        rejected_confirmation = client.post(
+            f"/budget/{flowers['id']}/delete-permanently",
+            data={
+                "csrf_token": csrf_from(deleted_page),
+                "confirmation": "apagar",
+            },
+            follow_redirects=False,
+        )
+        assert rejected_confirmation.status_code == 303
+        assert "error=confirmation" in rejected_confirmation.headers["location"]
+
+        permanently_deleted = client.post(
+            f"/budget/{flowers['id']}/delete-permanently",
+            data={
+                "csrf_token": csrf_from(deleted_page),
+                "confirmation": "APAGAR",
+            },
+            follow_redirects=False,
+        )
+        assert permanently_deleted.status_code == 303
+        assert "message=permanently_deleted" in permanently_deleted.headers["location"]
+        assert "Flores" not in client.get("/budget?archived=true").text
+
+        restore_rejected = client.post(
+            f"/budget/{flowers['id']}/restore",
+            data={"csrf_token": csrf_from(deleted_page)},
+            follow_redirects=False,
+        )
+        assert restore_rejected.status_code == 303
+
     with Session(engine) as db:
         preserved = db.scalar(select(BudgetCategory).where(BudgetCategory.name == "Flores"))
         assert preserved is not None
         assert preserved.is_archived is True
         assert preserved.planned_limit == Decimal("600.00")
+        tombstone = db.scalar(
+            select(RecordTombstone).where(
+                RecordTombstone.entity_type == "budget_categories",
+                RecordTombstone.entity_id == preserved.id,
+            )
+        )
+        assert tombstone is not None
+        assert '"name": "Flores"' in tombstone.snapshot_json
+        assert tombstone.deleted_by_id == user_id
+        assert db.scalar(select(Activity).where(Activity.action_type == "eliminou definitivamente"))

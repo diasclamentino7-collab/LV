@@ -23,6 +23,7 @@ from app.services.activity import record_activity
 from app.services.auth_session import authenticated_user
 from app.services.budget import budget_snapshot, serialize_budget_snapshot
 from app.services.csrf import valid_csrf_token
+from app.services.record_deletion import create_tombstone, is_tombstoned, not_tombstoned
 
 router = APIRouter()
 
@@ -234,6 +235,10 @@ for slug, title in {
 MODULES["ceremony"] = MODULES["kingdom-hall"]
 MODULES["quinta"] = MODULES["reception"]
 
+GLOBAL_DELETED_MODULES = tuple(
+    slug for slug in MODULES if slug not in {"ceremony", "quinta", "settings"}
+)
+
 
 def logged_user_id(request: Request) -> int | None:
     return request.session.get("user_id")
@@ -271,7 +276,10 @@ def value_for(field: Field, raw: str) -> Any:
 
 def module_query(spec: Module, search: str, archived: bool = False) -> Select[Any]:
     model = spec.model or WorkspaceRecord
-    statement = select(model).where(model.is_archived.is_(archived))
+    statement = select(model).where(
+        model.is_archived.is_(archived),
+        not_tombstoned(model),
+    )
     if spec.model is None:
         statement = statement.where(WorkspaceRecord.module.in_((spec.slug, *spec.legacy_slugs)))
         if search:
@@ -301,6 +309,7 @@ def record_for(spec: Module, db: Session, record_id: int) -> Any | None:
     if (
         record is None
         or record.is_archived
+        or is_tombstoned(db, model, record_id)
         or (spec.model is None and record.module not in valid_modules)
     ):
         return None
@@ -317,13 +326,21 @@ def relation_choices(db: Session) -> dict[str, list[Any]]:
         "categories": list(
             db.scalars(
                 select(BudgetCategory)
-                .where(BudgetCategory.is_archived.is_(False))
+                .where(
+                    BudgetCategory.is_archived.is_(False),
+                    not_tombstoned(BudgetCategory),
+                )
                 .order_by(BudgetCategory.name)
             ).all()
         ),
         "vendors": list(
             db.scalars(
-                select(Vendor).where(Vendor.is_archived.is_(False)).order_by(Vendor.company)
+                select(Vendor)
+                .where(
+                    Vendor.is_archived.is_(False),
+                    not_tombstoned(Vendor),
+                )
+                .order_by(Vendor.company)
             ).all()
         ),
     }
@@ -341,6 +358,21 @@ def record_label(record: Any) -> str:
     if isinstance(record, Payment):
         return f"Pagamento {record.amount}"
     return f"Registo #{record.id}"
+
+
+def deleted_redirect(
+    slug: str,
+    return_to: str,
+    *,
+    message: str | None = None,
+    error: str | None = None,
+) -> RedirectResponse:
+    """Return only to known internal deleted-record views."""
+
+    base = "/deleted" if return_to == "deleted" else f"/{slug}?archived=true"
+    parameter = f"message={message}" if message else f"error={error}"
+    separator = "&" if "?" in base else "?"
+    return RedirectResponse(f"{base}{separator}{parameter}", status_code=303)
 
 
 @router.get("/ceremony", include_in_schema=False)
@@ -376,6 +408,46 @@ def budget_summary_api(request: Request, q: str = "") -> JSONResponse:
         headers={
             "Cache-Control": "private, no-store, max-age=0",
             "Pragma": "no-cache",
+        },
+    )
+
+
+@router.get("/deleted", response_class=HTMLResponse, include_in_schema=False)
+def deleted_records_page(request: Request, q: str = "") -> Response:
+    """Show every recoverable archived record in one authenticated view."""
+
+    if redirect := require_login(request):
+        return redirect
+    search = q.strip()[:100]
+    deleted_records: list[dict[str, Any]] = []
+    with SessionLocal() as db:
+        for slug in GLOBAL_DELETED_MODULES:
+            spec = MODULES[slug]
+            records = db.scalars(module_query(spec, search, archived=True)).all()
+            deleted_records.extend(
+                {
+                    "id": record.id,
+                    "label": record_label(record),
+                    "module_slug": slug,
+                    "module_title": spec.title,
+                    "updated_at": record.updated_at,
+                }
+                for record in records
+            )
+    deleted_records.sort(
+        key=lambda item: item["updated_at"].isoformat() if item["updated_at"] else "",
+        reverse=True,
+    )
+    return templates.TemplateResponse(
+        request,
+        "deleted.html",
+        {
+            "app_name": get_settings().app_name,
+            "current_section": "deleted",
+            "records": deleted_records,
+            "search": search,
+            "message": request.query_params.get("message"),
+            "error": request.query_params.get("error"),
         },
     )
 
@@ -565,11 +637,12 @@ def restore_record(
     slug: str,
     record_id: int,
     csrf_token: str = Form(""),
+    return_to: str = "",
 ) -> RedirectResponse:
     if redirect := require_login(request):
         return redirect
     if not valid_csrf_token(request, csrf_token):
-        return RedirectResponse(f"/{slug}?error=csrf&archived=true", status_code=303)
+        return deleted_redirect(slug, return_to, error="csrf")
     spec = MODULES.get(slug)
     if spec is not None:
         with SessionLocal() as db:
@@ -579,7 +652,12 @@ def restore_record(
             belongs_to_module = spec.model is not None or (
                 record is not None and record.module in valid_modules
             )
-            if record is not None and record.is_archived and belongs_to_module:
+            if (
+                record is not None
+                and record.is_archived
+                and belongs_to_module
+                and not is_tombstoned(db, model, record_id)
+            ):
                 record.is_archived = False
                 record.updated_by_id = logged_user_id(request)
                 record_activity(
@@ -590,4 +668,71 @@ def restore_record(
                     spec.slug,
                 )
                 db.commit()
+    if return_to == "deleted":
+        return deleted_redirect(slug, return_to, message="restored")
     return RedirectResponse(f"/{slug}?message=restored", status_code=303)
+
+
+@router.post(
+    "/{slug}/{record_id}/delete-permanently",
+    include_in_schema=False,
+)
+def permanently_delete_record(
+    request: Request,
+    slug: str,
+    record_id: int,
+    csrf_token: str = Form(""),
+    confirmation: str = Form(""),
+    return_to: str = "",
+) -> RedirectResponse:
+    """Remove an archived record from the UI without erasing its database row."""
+
+    if redirect := require_login(request):
+        return redirect
+    if not valid_csrf_token(request, csrf_token):
+        return deleted_redirect(slug, return_to, error="csrf")
+    if confirmation.strip() != "APAGAR":
+        return deleted_redirect(slug, return_to, error="confirmation")
+    spec = MODULES.get(slug)
+    if spec is None:
+        return RedirectResponse("/deleted", status_code=303)
+
+    with SessionLocal() as db:
+        model = spec.model or WorkspaceRecord
+        record = db.get(model, record_id)
+        valid_modules = (spec.slug, *spec.legacy_slugs)
+        belongs_to_module = spec.model is not None or (
+            record is not None and record.module in valid_modules
+        )
+        if record is None or not record.is_archived or not belongs_to_module:
+            return deleted_redirect(slug, return_to, error="not_archived")
+        if is_tombstoned(db, model, record_id):
+            return deleted_redirect(slug, return_to, message="permanently_deleted")
+
+        user_id = logged_user_id(request)
+        record_name = record_label(record)
+        record.updated_by_id = user_id
+        create_tombstone(
+            db,
+            record,
+            module=spec.slug,
+            user_id=user_id,
+        )
+        record_activity(
+            db,
+            user_id,
+            "eliminou definitivamente",
+            (
+                f"removeu {spec.title.lower()} da interface: {record_name}; "
+                "a cópia técnica foi preservada"
+            ),
+            spec.slug,
+        )
+        try:
+            db.commit()
+        except IntegrityError:
+            # A second simultaneous request may have inserted the same marker.
+            # The unique tombstone keeps the operation idempotent.
+            db.rollback()
+
+    return deleted_redirect(slug, return_to, message="permanently_deleted")
