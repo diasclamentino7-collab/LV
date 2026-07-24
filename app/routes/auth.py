@@ -61,6 +61,7 @@ def login(
         if user is None or not user.is_active or not verify_password(password, user.password_hash):
             return RedirectResponse("/login?error=1", status_code=303)
         request.session["user_id"] = user.id
+        request.session["user_name"] = user.name
     return RedirectResponse("/dashboard", status_code=303)
 
 
@@ -68,3 +69,27 @@ def login(
 def logout(request: Request) -> RedirectResponse:
     request.session.clear()
     return RedirectResponse("/login", status_code=303)
+
+
+@router.get("/account/password", response_class=HTMLResponse, include_in_schema=False)
+def password_page(request: Request) -> Response:
+    if request.session.get("user_id") is None:
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(
+        request, "password.html", {"app_name": get_settings().app_name}
+    )
+
+
+@router.post("/account/password", include_in_schema=False)
+def change_password(
+    request: Request, current_password: str = Form(...), new_password: str = Form(...)
+) -> RedirectResponse:
+    if len(new_password) < 8:
+        return RedirectResponse("/account/password?error=length", status_code=303)
+    with SessionLocal() as db:
+        user = db.get(User, request.session.get("user_id"))
+        if user is None or not verify_password(current_password, user.password_hash):
+            return RedirectResponse("/account/password?error=current", status_code=303)
+        user.password_hash = hash_password(new_password)
+        db.commit()
+    return RedirectResponse("/dashboard?message=password", status_code=303)

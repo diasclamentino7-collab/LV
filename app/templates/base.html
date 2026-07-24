@@ -15,7 +15,7 @@
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Navegação principal">
-        <a class="brand" href="#" aria-label="LV Wedding Planner, página inicial">
+        <a class="brand" href="/dashboard" aria-label="LV Wedding Planner, página inicial">
           <span class="brand-mark">LV</span>
           <span class="brand-name">Wedding<br><em>Planner</em></span>
         </a>
@@ -47,8 +47,8 @@
           <a class="nav-item {% if current_section == 'settings' %}is-active{% endif %}" href="/settings"><span class="nav-icon">⚙</span>Configurações</a>
           <div class="profile-card">
             <span class="avatar">LV</span>
-            <span><strong>Leonor &amp; Vasco</strong><small>O nosso espaço</small></span>
-            <span class="more">•••</span>
+            <span><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><small>Em sessão</small></span>
+            <a class="more" href="/settings" aria-label="Configurações">•••</a>
           </div>
         </div>
       </aside>
@@ -58,9 +58,9 @@
           <button class="menu-button" aria-label="Abrir menu">☰</button>
           <div class="breadcrumb"><span>LV</span><i>/</i><strong>Visão geral</strong></div>
           <div class="header-actions">
-            <button class="icon-button" aria-label="Pesquisar">⌕</button>
-            <button class="icon-button notification" aria-label="Notificações">♧</button>
-            <button class="header-avatar" aria-label="Perfil de Leonor e Vasco">LV</button>
+            <a class="icon-button" href="/communication" aria-label="Pesquisar">⌕</a>
+            <a class="icon-button notification" href="/communication" aria-label="Atividade e comunicação">✦</a>
+            <details class="account-menu"><summary class="header-avatar" aria-label="Menu de conta">{{ request.session.get('user_name', 'LV')[:2]|upper }}</summary><div><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><a href="/account/password">Alterar password</a><form action="/logout" method="post"><button>Terminar sessão</button></form></div></details>
           </div>
         </header>
         <main class="content">{% block content %}{% endblock %}</main>
