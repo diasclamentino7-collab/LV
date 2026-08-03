@@ -3,6 +3,7 @@
 {% block title %}Todos os eliminados · {{ display_app_name|default(app_name) }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/deletion.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/utility-workspaces.css') }}">
 {% endblock %}
 {% block content %}
 <section class="page-intro" data-motion-list>
@@ -33,18 +34,42 @@
 </div>
 {% endif %}
 
-<section class="card module-records">
-  <form class="search-bar" method="get">
+<section class="card module-records utility-workspace" data-utility-workspace="deleted">
+  <form class="search-bar utility-server-search" method="get">
     <label class="sr-only" for="deleted-search">Pesquisar em todos os eliminados</label>
-    <input id="deleted-search" name="q" value="{{ search }}" placeholder="Pesquisar em todos os módulos">
+    <input id="deleted-search" name="q" value="{{ search }}" type="search" inputmode="search" autocomplete="off" placeholder="Pesquisar em todos os módulos" data-utility-search>
     <button class="secondary-button">Pesquisar</button>
     {% if search %}<a class="text-button" href="/deleted">Limpar</a>{% endif %}
   </form>
 
   {% if records %}
-  <div class="record-list">
+  <div class="utility-toolbar utility-toolbar-compact" data-enhanced-only hidden>
+    <div class="utility-live-summary">
+      <span class="utility-pulse" aria-hidden="true"></span>
+      <p role="status" aria-live="polite" aria-atomic="true" data-utility-summary>{{ records|length }} registos apresentados</p>
+      <button class="utility-clear" type="button" data-utility-clear hidden>Limpar texto</button>
+    </div>
+    <label class="utility-sort-select" for="deleted-local-sort">
+      <span>Ordenar resultados</span>
+      <select id="deleted-local-sort" data-utility-sort-select>
+        <option value="original:asc">Ordem apresentada</option>
+        <option value="timestamp:desc">Atualizados recentemente</option>
+        <option value="timestamp:asc">Atualizados há mais tempo</option>
+        <option value="label:asc">Nome A–Z</option>
+        <option value="module:asc">Módulo A–Z</option>
+      </select>
+    </label>
+  </div>
+  <div class="record-list utility-results" data-utility-list data-utility-results>
     {% for record in records %}
-    <article class="record-row" data-motion-card>
+    <article
+      class="record-row"
+      data-motion-card
+      data-utility-item
+      data-label="{{ record.label }}"
+      data-module="{{ record.module_title }}"
+      data-timestamp="{{ record.updated_at.isoformat() if record.updated_at else '' }}"
+    >
       <div>
         <p class="deleted-module">{{ record.module_title }}</p>
         <h2>{{ record.label }}</h2>
@@ -60,6 +85,12 @@
     </article>
     {% endfor %}
   </div>
+  <div class="empty-state utility-filter-empty" data-utility-empty hidden>
+    <span class="empty-icon">⌕</span>
+    <h3>Nenhum eliminado corresponde ao texto.</h3>
+    <p>A pesquisa instantânea atua apenas nos resultados já carregados e não altera os filtros do servidor.</p>
+    <button class="secondary-button" type="button" data-utility-empty-clear>Limpar texto</button>
+  </div>
   {% else %}
   <div class="empty-state">
     <span class="empty-icon">✦</span>
@@ -68,4 +99,8 @@
   </div>
   {% endif %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/utility-workspaces.js') }}" defer></script>
 {% endblock %}

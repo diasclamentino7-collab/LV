@@ -130,6 +130,27 @@ Mesmo que seja escolhido movimento completo nas Configurações, a aplicação
 reduz os efeitos quando `prefers-reduced-motion` está ativo. Com **Sem
 animações**, todas as páginas e ações continuam completamente funcionais.
 
+A lupa do cabeçalho abre uma pesquisa global instantânea. Também pode ser
+aberta com `Ctrl + K` no Windows ou `⌘ + K` no macOS. Permite encontrar áreas,
+abrir formulários frequentes e navegar apenas com as setas e `Enter`, sem fazer
+pedidos ao servidor enquanto se pesquisa.
+
+A página **Convidados** funciona como uma folha de cálculo colaborativa:
+edição direta nas células, gravação automática na base de dados, linha de
+adição rápida, pesquisa e filtros dinâmicos, ordenação, seleção múltipla,
+ações em grupo e vista compacta. No telemóvel, cada linha transforma-se num
+cartão editável. A lista sincroniza alterações feitas noutro dispositivo e
+protege uma edição em curso contra substituições silenciosas.
+
+As restantes listas usam um workspace comum com pesquisa instantânea, ordenação
+por coluna, contagem visível, seleção por teclado e densidade confortável ou
+compacta. O HTML tradicional continua a funcionar sem JavaScript. Os
+formulários partilham validação inline, progresso de preenchimento, aviso de
+alterações por guardar, textareas ajustáveis e o atalho Ctrl/Cmd + S. O
+Histórico de atividade e Todos os eliminados também permitem pesquisar e
+ordenar localmente os resultados já carregados, sem pedidos adicionais nem
+atrasos de navegação.
+
 O bloco **LV – Wedding Planner** regressa imediatamente ao Dashboard e a nova
 página recebe apenas uma entrada curta e subtil, sem temporizadores antes da
 navegação. Se o Dashboard já estiver aberto, não há reload: apenas uma

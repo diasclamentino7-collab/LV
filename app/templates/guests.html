@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% macro guest_select(field, value, options, label) -%}
+<select
+  class="guest-cell-control guest-status-control"
+  data-guest-field="{{ field }}"
+  data-value="{{ value|default('', true) }}"
+  aria-label="{{ label }}"
+  disabled
+>
+  {% for option in options %}
+  <option value="{{ option }}"{% if value == option %} selected{% endif %}>{{ option or '—' }}</option>
+  {% endfor %}
+</select>
+{%- endmacro %}
+
+{% macro guest_row(guest=none, template_row=false) -%}
+{% set guest_id = guest.id if guest else '' %}
+{% set guest_name = guest.name|default('', true) if guest else '' %}
+{% set updated_value = guest.updated_at|default('', true) if guest else '' %}
+<tr
+  class="guest-sheet-row{% if template_row %} is-new-row{% endif %}"
+  {% if not template_row %}data-guest-row data-guest-id="{{ guest_id }}" data-updated-at="{{ updated_value }}"{% endif %}
+>
+  <td class="guest-select-cell" data-label="Selecionar">
+    {% if not template_row %}
+    <input class="guest-row-check" type="checkbox" value="{{ guest_id }}" aria-label="Selecionar {{ guest_name }}">
+    {% else %}
+    <span class="guest-new-mark" aria-hidden="true">+</span>
+    {% endif %}
+  </td>
+  <td class="guest-name-cell" data-label="Nome">
+    <input
+      class="guest-cell-control guest-name-input"
+      type="text"
+      value="{{ guest_name }}"
+      data-guest-field="name"
+      aria-label="Nome do convidado"
+      autocomplete="off"
+      {% if template_row %}placeholder="Nome do novo convidado" form="guest-quick-add" name="name" required{% else %}readonly{% endif %}
+    >
+  </td>
+  <td data-label="Resposta">
+    {% if template_row %}
+    <select class="guest-cell-control guest-status-control" data-value="Pendente" name="rsvp_status" form="guest-quick-add" aria-label="Resposta do novo convidado">
+      <option>Pendente</option><option>Confirmado</option><option>Recusado</option><option>Talvez</option>
+    </select>
+    {% else %}
+    {{ guest_select('rsvp_status', guest.rsvp_status|default('Pendente', true), ('Pendente', 'Confirmado', 'Recusado', 'Talvez'), 'Resposta de ' ~ guest_name) }}
+    {% endif %}
+  </td>
+  <td data-label="Parte">
+    {% if template_row %}
+    <select class="guest-cell-control" name="side" form="guest-quick-add" aria-label="Parte do novo convidado">
+      <option value="">—</option><option>Noivo</option><option>Noiva</option><option>Ambos</option>
+    </select>
+    {% else %}
+    {{ guest_select('side', guest.side|default('', true), ('', 'Noivo', 'Noiva', 'Ambos'), 'Parte de ' ~ guest_name) }}
+    {% endif %}
+  </td>
+  <td data-label="Grupo">
+    {% if template_row %}
+    <select class="guest-cell-control" name="age_group" form="guest-quick-add" aria-label="Grupo do novo convidado">
+      <option>Adulto</option><option>Criança</option><option>Bebé</option>
+    </select>
+    {% else %}
+    {{ guest_select('age_group', guest.age_group|default('Adulto', true), ('Adulto', 'Criança', 'Bebé'), 'Grupo de ' ~ guest_name) }}
+    {% endif %}
+  </td>
+  <td data-label="Congregação">
+    <input
+      class="guest-cell-control"
+      type="text"
+      value="{{ guest.congregation|default('', true) if guest else '' }}"
+      {% if template_row %}name="congregation" form="guest-quick-add"{% else %}data-guest-field="congregation" readonly{% endif %}
+      aria-label="Congregação{% if guest_name %} de {{ guest_name }}{% endif %}"
+      autocomplete="off"
+    >
+  </td>
+  <td data-label="Mesa">
+    <input
+      class="guest-cell-control guest-table-input"
+      type="text"
+      value="{{ guest.table_name|default('', true) if guest else '' }}"
+      {% if template_row %}name="table_name" form="guest-quick-add"{% else %}data-guest-field="table_name" readonly{% endif %}
+      aria-label="Mesa{% if guest_name %} de {{ guest_name }}{% endif %}"
+      autocomplete="off"
+    >
+  </td>
+  <td class="guest-boolean-cell" data-label="Convite">
+    <label class="guest-tick" title="Convite enviado">
+      <input
+        type="checkbox"
+        {% if guest and guest.invitation_sent %}checked{% endif %}
+        {% if template_row %}name="invitation_sent" value="true" form="guest-quick-add"{% else %}data-guest-field="invitation_sent" disabled{% endif %}
+        aria-label="Convite enviado{% if guest_name %} a {{ guest_name }}{% endif %}"
+      >
+      <span aria-hidden="true">✓</span>
+    </label>
+  </td>
+  <td class="guest-boolean-cell" data-label="Presente">
+    <label class="guest-tick is-gift" title="Presente recebido">
+      <input
+        type="checkbox"
+        {% if guest and guest.gift_received %}checked{% endif %}
+        {% if template_row %}name="gift_received" value="true" form="guest-quick-add"{% else %}data-guest-field="gift_received" disabled{% endif %}
+        aria-label="Presente recebido{% if guest_name %} de {{ guest_name }}{% endif %}"
+      >
+      <span aria-hidden="true">✦</span>
+    </label>
+  </td>
+  <td class="guest-secondary-cell" data-label="Telefone">
+    <input
+      class="guest-cell-control"
+      type="tel"
+      value="{{ guest.phone|default('', true) if guest else '' }}"
+      {% if template_row %}name="phone" form="guest-quick-add"{% else %}data-guest-field="phone" readonly{% endif %}
+      aria-label="Telefone{% if guest_name %} de {{ guest_name }}{% endif %}"
+      autocomplete="off"
+    >
+  </td>
+  <td class="guest-secondary-cell" data-label="Email">
+    <input
+      class="guest-cell-control"
+      type="email"
+      value="{{ guest.email|default('', true) if guest else '' }}"
+      {% if template_row %}name="email" form="guest-quick-add"{% else %}data-guest-field="email" readonly{% endif %}
+      aria-label="Email{% if guest_name %} de {{ guest_name }}{% endif %}"
+      autocomplete="off"
+    >
+  </td>
+  <td class="guest-secondary-cell guest-wide-cell" data-label="Alimentação">
+    <input
+      class="guest-cell-control"
+      type="text"
+      value="{{ guest.dietary_requirements|default('', true) if guest else '' }}"
+      {% if template_row %}name="dietary_requirements" form="guest-quick-add"{% else %}data-guest-field="dietary_requirements" readonly{% endif %}
+      aria-label="Restrições alimentares{% if guest_name %} de {{ guest_name }}{% endif %}"
+      autocomplete="off"
+    >
+  </td>
+  <td class="guest-secondary-cell guest-wide-cell" data-label="Necessidades">
+    <input
+      class="guest-cell-control"
+      type="text"
+      value="{{ guest.special_needs|default('', true) if guest else '' }}"
+      {% if template_row %}name="special_needs" form="guest-quick-add"{% else %}data-guest-field="special_needs" readonly{% endif %}
+      aria-label="Necessidades especiais{% if guest_name %} de {{ guest_name }}{% endif %}"
+      autocomplete="off"
+    >
+  </td>
+  <td class="guest-secondary-cell guest-wide-cell" data-label="Notas">
+    <input
+      class="guest-cell-control"
+      type="text"
+      value="{{ guest.notes|default('', true) if guest else '' }}"
+      {% if template_row %}name="notes" form="guest-quick-add"{% else %}data-guest-field="notes" readonly{% endif %}
+      aria-label="Notas{% if guest_name %} de {{ guest_name }}{% endif %}"
+      autocomplete="off"
+    >
+  </td>
+  <td class="guest-actions-cell" data-label="Ações">
+    {% if template_row %}
+    <button class="guest-quick-save" type="submit" form="guest-quick-add" data-motion-action="add">
+      Adicionar
+    </button>
+    {% else %}
+    <span class="guest-save-state" data-guest-save-state role="status" aria-live="polite">{% if guest and guest.updated_by %}Por {{ guest.updated_by }}{% else %}Guardado{% endif %}</span>
+    <button class="guest-expand-button" type="button" data-guest-expand aria-expanded="false">Mais</button>
+    <a class="guest-edit-link" href="/guests/{{ guest_id }}/edit">Detalhes</a>
+    <form method="post" action="/guests/{{ guest_id }}/archive" data-guest-archive-form onsubmit="return confirm('Eliminar este convidado da lista? O registo ficará preservado nos eliminados.')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" aria-label="Eliminar {{ guest_name }}">Eliminar</button>
+    </form>
+    {% endif %}
+  </td>
+</tr>
+{%- endmacro %}
+
+{% set rows = guest_rows|default(guests|default([]), true) %}
+{% set stats = guest_stats|default({}, true) %}
+{% set filters = guest_filters|default({}, true) %}
+{% set current_search = search|default(request.query_params.get('q', ''), true) %}
+{% set current_rsvp = request.query_params.get('rsvp_status', filters.rsvp_status|default('')) %}
+{% set current_side = request.query_params.get('side', filters.side|default('')) %}
+{% set current_group = request.query_params.get('age_group', filters.age_group|default('')) %}
+{% set current_congregation = request.query_params.get('congregation', filters.congregation|default('')) %}
+{% set current_table = request.query_params.get('table_name', filters.table_name|default('')) %}
+{% set current_sort = request.query_params.get('sort', filters.sort|default('name', true)) %}
+{% set current_direction = request.query_params.get('direction', filters.direction|default('asc', true)) %}
+
+{% block title %}Convidados · {{ display_app_name|default(app_name) }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/guests.css') }}">
+{% endblock %}
+
+{% block content %}
+<section
+  class="guest-workspace"
+  data-guest-workspace
+  data-csrf-token="{{ csrf_token }}"
+  data-api-url="/api/guests"
+  data-poll-interval="18000"
+  data-revision="{{ guest_revision|default('', true) }}"
+>
+  <section class="page-intro guest-intro">
+    <div>
+      <p class="eyebrow">Lista viva · guardada automaticamente</p>
+      <h1>Convidados <span data-guest-visible-count>{{ stats.total|default(rows|length, true) }}</span></h1>
+      <p class="intro-copy">Editem diretamente na grelha. Cada alteração é gravada na base de dados e fica disponível para os dois.</p>
+    </div>
+    <div class="page-actions guest-page-actions">
+      <a class="secondary-button" href="/exports/guests.pdf?q={{ current_search|urlencode }}&archived=false" download data-export>Exportar PDF</a>
+      <a class="secondary-button" href="/guests?archived=true">Ver eliminados</a>
+      <a class="secondary-button" href="/guests/new">Formulário completo</a>
+      <button class="primary-button" type="button" data-guest-focus-new>+ Adicionar rápido</button>
+    </div>
+  </section>
+
+  {% if message %}
+  <div class="success-banner">
+    {% if message == 'created' %}Convidado adicionado com sucesso.
+    {% elif message == 'updated' %}Alterações guardadas.
+    {% else %}Convidado retirado da lista sem perder os seus dados.{% endif %}
+  </div>
+  {% endif %}
+  {% if error %}<div class="form-error">Não foi possível concluir a operação. Recarreguem a página e tentem novamente.</div>{% endif %}
+
+  <section class="guest-metrics" aria-label="Resumo dos convidados" data-motion-list>
+    <article class="guest-metric is-total" data-motion-card>
+      <span class="guest-metric-icon" aria-hidden="true">◫</span>
+      <div><small>Total na lista</small><strong data-guest-metric="total" data-motion-number>{{ stats.total|default(rows|length, true) }}</strong><p>Acompanhem tudo num só lugar</p></div>
+    </article>
+    <article class="guest-metric is-confirmed" data-motion-card>
+      <span class="guest-metric-icon" aria-hidden="true">✓</span>
+      <div><small>Confirmados</small><strong data-guest-metric="confirmed" data-motion-number>{{ stats.confirmed|default(0, true) }}</strong><p><span data-guest-metric="confirmation_rate">{{ stats.confirmation_rate|default(0, true) }}</span>% de confirmação</p></div>
+    </article>
+    <article class="guest-metric is-pending" data-motion-card>
+      <span class="guest-metric-icon" aria-hidden="true">⌛</span>
+      <div><small>A confirmar</small><strong data-guest-metric="pending" data-motion-number>{{ stats.pending|default(0, true) }}</strong><p>Pendentes ou talvez · <span data-guest-metric="declined">{{ stats.declined|default(0, true) }}</span> recusaram</p></div>
+    </article>
+    <article class="guest-metric is-seated" data-motion-card>
+      <span class="guest-metric-icon" aria-hidden="true">⌘</span>
+      <div><small>Com mesa</small><strong data-guest-metric="seated" data-motion-number>{{ stats.seated|default(0, true) }}</strong><p>Distribuídos pelo plano de mesas</p></div>
+    </article>
+  </section>
+
+  <section class="guest-command-card card" aria-label="Pesquisar e filtrar convidados">
+    <form class="guest-filter-form" method="get" action="/guests" data-guest-filters>
+      <label class="guest-search-field">
+        <span class="sr-only">Pesquisar convidados</span>
+        <span class="guest-search-icon" aria-hidden="true">⌕</span>
+        <input type="search" name="q" value="{{ current_search }}" placeholder="Pesquisar nome, contacto, mesa…" autocomplete="off" data-guest-search>
+        <kbd>/</kbd>
+      </label>
+      <label><span>Resposta</span><select name="rsvp_status"><option value="">Todas</option>{% for option in ('Pendente', 'Confirmado', 'Recusado', 'Talvez') %}<option value="{{ option }}"{% if current_rsvp == option %} selected{% endif %}>{{ option }}</option>{% endfor %}</select></label>
+      <label><span>Parte</span><select name="side"><option value="">Todas</option>{% for option in ('Noivo', 'Noiva', 'Ambos') %}<option value="{{ option }}"{% if current_side == option %} selected{% endif %}>{{ option }}</option>{% endfor %}</select></label>
+      <label><span>Grupo</span><select name="age_group"><option value="">Todos</option>{% for option in ('Adulto', 'Criança', 'Bebé') %}<option value="{{ option }}"{% if current_group == option %} selected{% endif %}>{{ option }}</option>{% endfor %}</select></label>
+      <label><span>Congregação</span><select name="congregation"><option value="">Todas</option>{% for option in filters.congregations|default([]) %}<option value="{{ option }}"{% if current_congregation == option %} selected{% endif %}>{{ option }}</option>{% endfor %}</select></label>
+      <label><span>Mesa</span><select name="table_name"><option value="">Todas</option>{% for option in filters.tables|default([]) %}<option value="{{ option }}"{% if current_table == option %} selected{% endif %}>{{ option }}</option>{% endfor %}</select></label>
+      <label class="guest-sort-field"><span>Ordenar</span><select name="sort"><option value="name"{% if current_sort == 'name' %} selected{% endif %}>Nome</option><option value="updated_at"{% if current_sort == 'updated_at' %} selected{% endif %}>Última alteração</option><option value="rsvp_status"{% if current_sort == 'rsvp_status' %} selected{% endif %}>Resposta</option><option value="table_name"{% if current_sort == 'table_name' %} selected{% endif %}>Mesa</option><option value="congregation"{% if current_sort == 'congregation' %} selected{% endif %}>Congregação</option></select></label>
+      <input type="hidden" name="direction" value="{{ current_direction }}" data-guest-direction>
+      <button class="guest-direction-button" type="button" data-guest-direction-toggle aria-label="Inverter ordenação" title="Inverter ordenação">{{ '↓' if current_direction == 'desc' else '↑' }}</button>
+      <button class="secondary-button guest-filter-submit" type="submit">Aplicar</button>
+      <button class="guest-clear-filters" type="button" data-guest-clear>Limpar</button>
+    </form>
+    <div class="guest-view-tools">
+      <p class="guest-live-state" data-guest-live-state role="status" aria-live="polite"><span></span>Dados sincronizados</p>
+      <p class="guest-key-hint">Enter guarda e avança · Esc desfaz · Alt + ↑/↓ muda de linha</p>
+      <button type="button" class="guest-density-button" data-guest-density aria-pressed="false">Vista compacta</button>
+    </div>
+  </section>
+
+  <section class="guest-bulk-toolbar" data-guest-bulk-toolbar hidden aria-label="Ações para convidados selecionados">
+    <strong><span data-guest-selected-count>0</span> selecionados</strong>
+    <span class="guest-bulk-divider" aria-hidden="true"></span>
+    <button type="button" data-guest-bulk="rsvp_status" data-guest-value="Confirmado">✓ Confirmar</button>
+    <button type="button" data-guest-bulk="rsvp_status" data-guest-value="Pendente">Marcar pendente</button>
+    <button type="button" data-guest-bulk="invitation_sent" data-guest-value="true">Convite enviado</button>
+    <button type="button" data-guest-bulk="gift_received" data-guest-value="true">Presente recebido</button>
+    <label class="guest-bulk-table-label"><span class="sr-only">Atribuir mesa</span><select data-guest-bulk-table><option value="">Escolher mesa…</option>{% for option in filters.tables|default([]) %}<option value="{{ option }}">{{ option }}</option>{% endfor %}</select></label>
+    <button type="button" data-guest-assign-table>Atribuir mesa</button>
+    <button type="button" class="is-danger" data-guest-bulk="archive">Eliminar</button>
+    <button type="button" class="guest-selection-clear" data-guest-selection-clear aria-label="Limpar seleção">×</button>
+  </section>
+
+  <section class="guest-sheet-card" aria-label="Grelha editável de convidados">
+    <div class="guest-sheet-scroll" data-guest-sheet-scroll>
+      <table class="guest-sheet">
+        <caption class="sr-only">Lista de convidados editável. As alterações são guardadas automaticamente.</caption>
+        <thead>
+          <tr>
+            <th class="guest-select-cell" scope="col"><input type="checkbox" data-guest-select-all aria-label="Selecionar todos os convidados visíveis"></th>
+            <th class="guest-name-cell" scope="col"><button type="button" data-guest-sort="name">Nome <span aria-hidden="true">↕</span></button></th>
+            <th scope="col"><button type="button" data-guest-sort="rsvp_status">Resposta <span aria-hidden="true">↕</span></button></th>
+            <th scope="col">Parte</th>
+            <th scope="col">Grupo</th>
+            <th scope="col"><button type="button" data-guest-sort="congregation">Congregação <span aria-hidden="true">↕</span></button></th>
+            <th scope="col"><button type="button" data-guest-sort="table_name">Mesa <span aria-hidden="true">↕</span></button></th>
+            <th scope="col">Convite</th>
+            <th scope="col">Presente</th>
+            <th scope="col">Telefone</th>
+            <th scope="col">Email</th>
+            <th scope="col">Alimentação</th>
+            <th scope="col">Necessidades</th>
+            <th scope="col">Notas</th>
+            <th class="guest-actions-cell" scope="col">Estado</th>
+          </tr>
+        </thead>
+        <tbody data-guest-rows>
+          <tr class="guest-quick-row" data-guest-quick-row>
+            <td class="guest-select-cell" data-label="Novo"><span class="guest-new-mark" aria-hidden="true">+</span></td>
+            <td class="guest-name-cell" data-label="Nome"><input class="guest-cell-control guest-name-input" type="text" name="name" form="guest-quick-add" placeholder="Adicionar nome…" required autocomplete="off" aria-label="Nome do novo convidado" data-guest-quick-name></td>
+            <td data-label="Resposta"><select class="guest-cell-control guest-status-control" name="rsvp_status" form="guest-quick-add" data-value="Pendente" aria-label="Resposta do novo convidado"><option>Pendente</option><option>Confirmado</option><option>Recusado</option><option>Talvez</option></select></td>
+            <td data-label="Parte"><select class="guest-cell-control" name="side" form="guest-quick-add" aria-label="Parte do novo convidado"><option value="">—</option><option>Noivo</option><option>Noiva</option><option>Ambos</option></select></td>
+            <td data-label="Grupo"><select class="guest-cell-control" name="age_group" form="guest-quick-add" aria-label="Grupo do novo convidado"><option>Adulto</option><option>Criança</option><option>Bebé</option></select></td>
+            <td data-label="Congregação"><input class="guest-cell-control" type="text" name="congregation" form="guest-quick-add" autocomplete="off" aria-label="Congregação do novo convidado"></td>
+            <td data-label="Mesa"><input class="guest-cell-control guest-table-input" type="text" name="table_name" form="guest-quick-add" autocomplete="off" aria-label="Mesa do novo convidado"></td>
+            <td class="guest-boolean-cell" data-label="Convite"><label class="guest-tick"><input type="checkbox" name="invitation_sent" value="true" form="guest-quick-add" aria-label="Convite enviado ao novo convidado"><span aria-hidden="true">✓</span></label></td>
+            <td class="guest-boolean-cell" data-label="Presente"><label class="guest-tick is-gift"><input type="checkbox" name="gift_received" value="true" form="guest-quick-add" aria-label="Presente recebido do novo convidado"><span aria-hidden="true">✦</span></label></td>
+            <td class="guest-secondary-cell" data-label="Telefone"><input class="guest-cell-control" type="tel" name="phone" form="guest-quick-add" autocomplete="off" aria-label="Telefone do novo convidado"></td>
+            <td class="guest-secondary-cell" data-label="Email"><input class="guest-cell-control" type="email" name="email" form="guest-quick-add" autocomplete="off" aria-label="Email do novo convidado"></td>
+            <td class="guest-secondary-cell guest-wide-cell" data-label="Alimentação"><input class="guest-cell-control" type="text" name="dietary_requirements" form="guest-quick-add" autocomplete="off" aria-label="Restrições alimentares do novo convidado"></td>
+            <td class="guest-secondary-cell guest-wide-cell" data-label="Necessidades"><input class="guest-cell-control" type="text" name="special_needs" form="guest-quick-add" autocomplete="off" aria-label="Necessidades especiais do novo convidado"></td>
+            <td class="guest-secondary-cell guest-wide-cell" data-label="Notas"><input class="guest-cell-control" type="text" name="notes" form="guest-quick-add" autocomplete="off" aria-label="Notas do novo convidado"></td>
+            <td class="guest-actions-cell" data-label="Ações"><button class="guest-quick-save" type="submit" form="guest-quick-add" data-motion-action="add">Adicionar</button></td>
+          </tr>
+          {% for guest in rows %}{{ guest_row(guest) }}{% endfor %}
+        </tbody>
+      </table>
+      <div class="guest-empty-state" data-guest-empty{% if rows %} hidden{% endif %}>
+        <span aria-hidden="true">♡</span>
+        <h2>A lista está pronta para ganhar vida.</h2>
+        <p>Adicionem o primeiro nome na linha rosa acima. Fica guardado imediatamente.</p>
+      </div>
+    </div>
+  </section>
+
+  <form id="guest-quick-add" method="post" action="/guests/new" data-guest-quick-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  </form>
+
+  <template data-guest-row-template>{{ guest_row() }}</template>
+  <div class="guest-celebration" data-guest-celebration aria-hidden="true"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/guests.js') }}" defer></script>
+{% endblock %}

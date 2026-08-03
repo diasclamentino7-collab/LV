@@ -2,6 +2,10 @@
 
 {% block title %}Histórico de atividade · {{ display_app_name|default(app_name) }}{% endblock %}
 
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/utility-workspaces.css') }}">
+{% endblock %}
+
 {% block content %}
   <section class="page-intro">
     <div>
@@ -12,7 +16,7 @@
     <a class="secondary-button" href="/communication">Abrir Comunicação</a>
   </section>
 
-  <section class="card activity-history-card">
+  <section class="card activity-history-card utility-workspace" data-utility-workspace="activity">
     <form class="activity-filters" method="get" action="/activity">
       <label>
         <span>Utilizador</span>
@@ -56,20 +60,60 @@
     </form>
 
     {% if activities %}
-      <div class="activity-table-wrap">
+      <div class="utility-toolbar" data-enhanced-only hidden>
+        <label class="utility-local-search" for="activity-local-search">
+          <span>Pesquisar nestes resultados</span>
+          <span class="utility-search-field">
+            <span aria-hidden="true">⌕</span>
+            <input
+              id="activity-local-search"
+              type="search"
+              inputmode="search"
+              autocomplete="off"
+              placeholder="Pessoa, módulo, ação ou descrição…"
+              data-utility-search
+            >
+          </span>
+        </label>
+        <label class="utility-sort-select" for="activity-local-sort">
+          <span>Ordenar</span>
+          <select id="activity-local-sort" data-utility-sort-select>
+            <option value="original:asc">Ordem apresentada</option>
+            <option value="timestamp:desc">Mais recentes</option>
+            <option value="timestamp:asc">Mais antigas</option>
+            <option value="user:asc">Utilizador A–Z</option>
+            <option value="module:asc">Módulo A–Z</option>
+            <option value="action:asc">Ação A–Z</option>
+          </select>
+        </label>
+        <div class="utility-live-summary">
+          <span class="utility-pulse" aria-hidden="true"></span>
+          <p role="status" aria-live="polite" aria-atomic="true" data-utility-summary>{{ activities|length }} registos apresentados</p>
+          <button class="utility-clear" type="button" data-utility-clear hidden>Limpar pesquisa</button>
+        </div>
+      </div>
+
+      <div class="activity-table-wrap utility-results" data-utility-results>
         <table class="activity-table">
           <thead>
             <tr>
-              <th>Data e hora</th>
-              <th>Utilizador</th>
-              <th>Módulo</th>
-              <th>Ação</th>
-              <th>Descrição</th>
+              <th scope="col" data-utility-sort-heading="timestamp"><button type="button" data-utility-sort-key="timestamp" disabled>Data e hora <span aria-hidden="true">↕</span></button></th>
+              <th scope="col" data-utility-sort-heading="user"><button type="button" data-utility-sort-key="user" disabled>Utilizador <span aria-hidden="true">↕</span></button></th>
+              <th scope="col" data-utility-sort-heading="module"><button type="button" data-utility-sort-key="module" disabled>Módulo <span aria-hidden="true">↕</span></button></th>
+              <th scope="col" data-utility-sort-heading="action"><button type="button" data-utility-sort-key="action" disabled>Ação <span aria-hidden="true">↕</span></button></th>
+              <th scope="col" data-utility-sort-heading="description"><button type="button" data-utility-sort-key="description" disabled>Descrição <span aria-hidden="true">↕</span></button></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody data-utility-list>
             {% for activity in activities %}
-              <tr>
+              <tr
+                data-utility-item
+                data-timestamp="{{ activity.occurred_at.isoformat() }}"
+                data-user="{{ activity.user_name }}"
+                data-module="{{ activity.module }}"
+                data-action="{{ activity.action_type }}"
+                data-description="{{ activity.description }}"
+              >
                 <td data-label="Data">{{ activity.occurred_at.strftime('%d/%m/%Y · %H:%M') }}</td>
                 <td data-label="Utilizador"><strong>{{ activity.user_name }}</strong></td>
                 <td data-label="Módulo"><span class="activity-module">{{ activity.module|replace('-', ' ') }}</span></td>
@@ -80,6 +124,12 @@
           </tbody>
         </table>
       </div>
+      <div class="empty-state utility-filter-empty" data-utility-empty hidden>
+        <span class="empty-icon">⌕</span>
+        <h3>Nenhum registo corresponde à pesquisa.</h3>
+        <p>Experimentem outra palavra ou limpem a pesquisa local. Os filtros do histórico permanecem intactos.</p>
+        <button class="secondary-button" type="button" data-utility-empty-clear>Limpar pesquisa</button>
+      </div>
       <p class="activity-limit-note">São apresentados até 250 registos por pesquisa.</p>
     {% else %}
       <div class="empty-state">
@@ -89,4 +139,8 @@
       </div>
     {% endif %}
   </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/utility-workspaces.js') }}" defer></script>
 {% endblock %}

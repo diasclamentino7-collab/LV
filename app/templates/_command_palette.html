@@ -1,0 +1,122 @@
+<dialog
+  class="command-palette motion-modal"
+  id="command-palette"
+  aria-labelledby="command-palette-title"
+  aria-describedby="command-palette-hint"
+  data-motion-modal
+>
+  <section class="command-palette-panel motion-modal-panel" data-motion-modal-panel>
+    <h2 class="visually-hidden" id="command-palette-title">Pesquisa e ações rápidas</h2>
+
+    <div class="command-search-row">
+      <span class="command-search-icon" aria-hidden="true">⌕</span>
+      <label class="visually-hidden" for="command-search-input">Pesquisar áreas e ações</label>
+      <input
+        id="command-search-input"
+        type="search"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="command-results"
+        aria-expanded="false"
+        aria-activedescendant=""
+        placeholder="Para onde querem ir?"
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="80"
+        autofocus
+        data-command-input
+      >
+      <button
+        class="command-close"
+        type="button"
+        data-motion-modal-close
+        aria-label="Fechar pesquisa"
+      ><kbd aria-hidden="true">Esc</kbd></button>
+    </div>
+
+    <div class="command-results" id="command-results" role="listbox" data-command-results>
+      <p class="command-status" role="status" aria-live="polite" data-command-status>
+        Escolham uma ação ou pesquisem pelo nome.
+      </p>
+
+      <section class="command-group" aria-labelledby="command-recent-title" data-command-recent-group hidden>
+        <div class="command-group-heading">
+          <h3 id="command-recent-title">Recentes</h3>
+          <span>Guardados neste dispositivo</span>
+        </div>
+        <div class="command-list command-recent-list" role="group" aria-labelledby="command-recent-title" data-command-recent-list></div>
+      </section>
+
+      <section class="command-group" aria-labelledby="command-actions-title" data-command-group>
+        <div class="command-group-heading">
+          <h3 id="command-actions-title">Ações rápidas</h3>
+          <span>Começar sem procurar menus</span>
+        </div>
+        <div class="command-list command-action-grid" role="group" aria-labelledby="command-actions-title">
+          <a class="command-item is-quick" href="/guests/new" role="option" aria-selected="false" data-command-item data-command-id="new-guest" data-command-search="novo convidado adicionar pessoa lista convidados">
+            <span class="command-item-icon blush" aria-hidden="true">＋</span><span><strong>Novo convidado</strong><small>Adicionar à lista de convidados</small></span><kbd aria-hidden="true">↵</kbd>
+          </a>
+          <a class="command-item is-quick" href="/expenses/new" role="option" aria-selected="false" data-command-item data-command-id="new-expense" data-command-search="nova despesa registar custo pagamento orçamento">
+            <span class="command-item-icon gold" aria-hidden="true">€</span><span><strong>Nova despesa</strong><small>Registar um custo do casamento</small></span><kbd aria-hidden="true">↵</kbd>
+          </a>
+          <a class="command-item is-quick" href="/checklist/new" role="option" aria-selected="false" data-command-item data-command-id="new-task" data-command-search="nova tarefa checklist lembrete criar">
+            <span class="command-item-icon sand" aria-hidden="true">✓</span><span><strong>Nova tarefa</strong><small>Acrescentar à checklist</small></span><kbd aria-hidden="true">↵</kbd>
+          </a>
+          <a class="command-item is-quick" href="/vendors/new" role="option" aria-selected="false" data-command-item data-command-id="new-vendor" data-command-search="novo fornecedor contacto serviço contratar">
+            <span class="command-item-icon blush" aria-hidden="true">✦</span><span><strong>Novo fornecedor</strong><small>Guardar contacto e serviço</small></span><kbd aria-hidden="true">↵</kbd>
+          </a>
+          <a class="command-item is-quick" href="/moodboard/new" role="option" aria-selected="false" data-command-item data-command-id="new-inspiration" data-command-search="nova inspiração moodboard imagem ideia adicionar">
+            <span class="command-item-icon gold" aria-hidden="true">✿</span><span><strong>Nova inspiração</strong><small>Adicionar ao moodboard</small></span><kbd aria-hidden="true">↵</kbd>
+          </a>
+          <a class="command-item is-quick" href="/communication/new" role="option" aria-selected="false" data-command-item data-command-id="new-note" data-command-search="nova nota ideia decisão lembrete comunicação">
+            <span class="command-item-icon sand" aria-hidden="true">✎</span><span><strong>Nova nota</strong><small>Registar no centro de comunicação</small></span><kbd aria-hidden="true">↵</kbd>
+          </a>
+        </div>
+      </section>
+
+      <section class="command-group" aria-labelledby="command-areas-title" data-command-group>
+        <div class="command-group-heading">
+          <h3 id="command-areas-title">Todas as áreas</h3>
+          <span>Navegação instantânea</span>
+        </div>
+        <div class="command-list" role="group" aria-labelledby="command-areas-title">
+          <a class="command-item" href="/dashboard" role="option" aria-selected="false" data-command-item data-command-id="dashboard" data-command-search="dashboard início pagina inicial visão geral resumo"><span class="command-item-icon blush" aria-hidden="true">⌂</span><span><strong>Dashboard</strong><small>Visão geral do casamento</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/guests" role="option" aria-selected="false" data-command-item data-command-id="guests" data-command-search="convidados pessoas confirmações rsvp lista"><span class="command-item-icon blush" aria-hidden="true">◫</span><span><strong>Convidados</strong><small>Lista, confirmações e contactos</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/budget" role="option" aria-selected="false" data-command-item data-command-id="budget" data-command-search="orçamento categorias limites dinheiro finanças"><span class="command-item-icon gold" aria-hidden="true">◈</span><span><strong>Orçamento</strong><small>Categorias, limites e visão financeira</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/checklist" role="option" aria-selected="false" data-command-item data-command-id="checklist" data-command-search="checklist tarefas lista afazeres"><span class="command-item-icon sand" aria-hidden="true">✓</span><span><strong>Checklist</strong><small>Tarefas e próximos passos</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/timeline" role="option" aria-selected="false" data-command-item data-command-id="timeline" data-command-search="cronograma agenda calendário datas eventos"><span class="command-item-icon sand" aria-hidden="true">◌</span><span><strong>Cronograma</strong><small>Datas e momentos importantes</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/payments" role="option" aria-selected="false" data-command-item data-command-id="payments" data-command-search="pagamentos pendentes faturas dinheiro"><span class="command-item-icon gold" aria-hidden="true">€</span><span><strong>Pagamentos</strong><small>Valores pagos e pendentes</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/expenses" role="option" aria-selected="false" data-command-item data-command-id="expenses" data-command-search="despesas custos gastos faturas orçamento"><span class="command-item-icon gold" aria-hidden="true">−</span><span><strong>Despesas</strong><small>Todos os custos registados</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/vendors" role="option" aria-selected="false" data-command-item data-command-id="vendors" data-command-search="fornecedores contactos serviços contratos"><span class="command-item-icon blush" aria-hidden="true">✦</span><span><strong>Fornecedores</strong><small>Contactos e serviços contratados</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/table-plan" role="option" aria-selected="false" data-command-item data-command-id="table-plan" data-command-search="plano mesas lugares convidados seating"><span class="command-item-icon sand" aria-hidden="true">⌘</span><span><strong>Plano de Mesas</strong><small>Organização dos lugares</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/kingdom-hall" role="option" aria-selected="false" data-command-item data-command-id="kingdom-hall" data-command-search="salão reino cerimónia grande dia"><span class="command-item-icon blush" aria-hidden="true">♡</span><span><strong>Salão do Reino</strong><small>Planeamento da cerimónia</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/reception" role="option" aria-selected="false" data-command-item data-command-id="reception" data-command-search="copo água festa receção quinta grande dia"><span class="command-item-icon gold" aria-hidden="true">✧</span><span><strong>Copo de Água</strong><small>Festa, quinta e receção</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/legal-process" role="option" aria-selected="false" data-command-item data-command-id="legal-process" data-command-search="processo legal documentos casamento civil"><span class="command-item-icon sand" aria-hidden="true">§</span><span><strong>Processo Legal</strong><small>Passos e documentação legal</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/attire" role="option" aria-selected="false" data-command-item data-command-id="attire" data-command-search="roupa vestido fato acessórios"><span class="command-item-icon blush" aria-hidden="true">◇</span><span><strong>Roupa</strong><small>Vestidos, fatos e acessórios</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/honeymoon" role="option" aria-selected="false" data-command-item data-command-id="honeymoon" data-command-search="lua mel viagem férias hotel"><span class="command-item-icon gold" aria-hidden="true">☼</span><span><strong>Lua de Mel</strong><small>Viagem e reservas</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/home" role="option" aria-selected="false" data-command-item data-command-id="home" data-command-search="casa lar compras mudança"><span class="command-item-icon sand" aria-hidden="true">⌂</span><span><strong>Casa</strong><small>O vosso novo lar</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/gifts" role="option" aria-selected="false" data-command-item data-command-id="gifts" data-command-search="presentes lista ofertas"><span class="command-item-icon blush" aria-hidden="true">♢</span><span><strong>Presentes</strong><small>Lista e ofertas recebidas</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/documents" role="option" aria-selected="false" data-command-item data-command-id="documents" data-command-search="documentos contratos faturas ficheiros comprovativos"><span class="command-item-icon sand" aria-hidden="true">▤</span><span><strong>Documentos</strong><small>Ficheiros e comprovativos</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/moodboard" role="option" aria-selected="false" data-command-item data-command-id="moodboard" data-command-search="moodboard inspiração imagens ideias mesa"><span class="command-item-icon blush" aria-hidden="true">✿</span><span><strong>Moodboard</strong><small>Inspirações visuais</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/communication" role="option" aria-selected="false" data-command-item data-command-id="communication" data-command-search="comunicação notas ideias decisões lembretes centro"><span class="command-item-icon gold" aria-hidden="true">✎</span><span><strong>Comunicação</strong><small>Notas partilhadas por Vítor e Leonor</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/activity" role="option" aria-selected="false" data-command-item data-command-id="activity" data-command-search="atividade histórico alterações utilizadores"><span class="command-item-icon sand" aria-hidden="true">◷</span><span><strong>Atividade</strong><small>Histórico completo de alterações</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/settings" role="option" aria-selected="false" data-command-item data-command-id="settings" data-command-search="configurações definições projeto cores data casamento conta"><span class="command-item-icon blush" aria-hidden="true">⚙</span><span><strong>Configurações</strong><small>Personalização, conta e preferências</small></span><kbd aria-hidden="true">↵</kbd></a>
+          <a class="command-item" href="/deleted" role="option" aria-selected="false" data-command-item data-command-id="deleted" data-command-search="eliminados lixo recuperar restaurar apagar"><span class="command-item-icon sand" aria-hidden="true">♲</span><span><strong>Todos os eliminados</strong><small>Recuperar ou remover registos</small></span><kbd aria-hidden="true">↵</kbd></a>
+        </div>
+      </section>
+
+      <div class="command-empty" data-command-empty hidden>
+        <span aria-hidden="true">⌕</span>
+        <strong>Nada encontrado</strong>
+        <p>Experimentem “convidados”, “despesa” ou “tarefa”.</p>
+      </div>
+    </div>
+
+    <footer class="command-footer" id="command-palette-hint">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navegar</span>
+      <span><kbd>↵</kbd> abrir</span>
+      <span><kbd>Esc</kbd> fechar</span>
+      <small>Sem esperas · pesquisa local</small>
+    </footer>
+  </section>
+</dialog>

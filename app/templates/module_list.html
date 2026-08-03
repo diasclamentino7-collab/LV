@@ -3,27 +3,112 @@
 {% block title %}{{ module.title }} · {{ display_app_name|default(app_name) }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/deletion.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/module-workspace.css') }}">
 {% endblock %}
 {% block content %}
-<section class="page-intro"><div><p class="eyebrow">Gestão do casamento</p><h1>{{ module.title }}{% if show_archived %} eliminados{% endif %}</h1><p class="intro-copy">{{ module.description }}</p></div><div class="page-actions"><a class="secondary-button" href="/exports/{{ module.slug }}.pdf?q={{ search|urlencode }}&archived={{ 'true' if show_archived else 'false' }}" download data-export>Exportar PDF</a><a class="secondary-button" href="/{{ module.slug }}?archived={{ 'false' if show_archived else 'true' }}">{{ 'Ver ativos' if show_archived else 'Ver eliminados' }}</a>{% if show_archived %}<a class="secondary-button" href="/deleted">Todos os eliminados</a>{% else %}<a class="primary-button" href="/{{ module.slug }}/new">+ Novo</a>{% endif %}</div></section>
-{% if module.slug in ['kingdom-hall', 'reception'] and ui_settings is defined %}
-  {% set venue_name = ui_settings.ceremony_venue if module.slug == 'kingdom-hall' else ui_settings.reception_venue %}
-  <section class="venue-summary" aria-label="Local principal" data-motion-card data-motion-tilt="1.4">
-    <span aria-hidden="true">{{ '♡' if module.slug == 'kingdom-hall' else '✧' }}</span>
-    <div>
-      <small>Local principal</small>
-      <strong>{{ venue_name or 'Ainda por definir' }}</strong>
-      <p>{{ ui_settings.wedding_city or 'Zona por definir' }} · usem os registos abaixo para URL, contacto, visitas e decisões.</p>
+<div class="module-workspace-page" data-module-workspace data-list-complete="{{ 'false' if search else 'true' }}" data-reset-url="/{{ module.slug }}{% if show_archived %}?archived=true{% endif %}">
+  <section class="page-intro workspace-intro">
+    <div><p class="eyebrow">Gestão do casamento</p><h1>{{ module.title }}{% if show_archived %} <span>eliminados</span>{% endif %}</h1><p class="intro-copy">{{ module.description }}</p></div>
+    <div class="page-actions module-page-actions">
+      <a class="secondary-button" href="/exports/{{ module.slug }}.pdf?q={{ search|urlencode }}&archived={{ 'true' if show_archived else 'false' }}" download data-export>Exportar PDF</a>
+      <a class="secondary-button" href="/{{ module.slug }}?archived={{ 'false' if show_archived else 'true' }}">{{ 'Ver ativos' if show_archived else 'Ver eliminados' }}</a>
+      {% if show_archived %}<a class="secondary-button" href="/deleted">Todos os eliminados</a>{% else %}<a class="primary-button" href="/{{ module.slug }}/new">+ Novo</a>{% endif %}
     </div>
-    <a class="secondary-button" href="/settings#event">Alterar local</a>
   </section>
-{% endif %}
-{% if message %}<div class="success-banner">{% if message == 'created' %}Registo criado com sucesso.{% elif message == 'updated' %}Alterações guardadas.{% elif message == 'restored' %}Registo recuperado com sucesso.{% elif message == 'permanently_deleted' %}Registo removido definitivamente da interface. A cópia técnica continua preservada.{% else %}Registo eliminado da lista. Os dados continuam preservados.{% endif %}</div>{% endif %}
-{% if error %}<div class="form-error">{% if error == 'confirmation' %}Confirmação inválida. Escreva APAGAR exatamente como indicado.{% elif error == 'not_archived' %}Só é possível apagar definitivamente um registo que já esteja nos eliminados.{% else %}A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.{% endif %}</div>{% endif %}
-<section class="card module-records">
-  <form class="search-bar" method="get"><input name="q" value="{{ search }}" placeholder="Pesquisar {{ module.title|lower }}"><button class="secondary-button">Pesquisar</button></form>
-  {% if records %}<div class="record-list">{% for record in records %}
-  <article class="record-row{% if module.slug == 'guests' %} guest-card{% endif %}"><div><h2>{{ record_labels[record.id] }}</h2><p>{% if record.planned_limit is defined %}Limite: {{ currency_symbol }}{{ '%.2f'|format(record.planned_limit) }} · {% endif %}{% if record.amount is defined %}Valor: {{ currency_symbol }}{{ '%.2f'|format(record.amount) }} · {% endif %}{% if record.status is defined %}{{ record.status }} · {% endif %}Atualizado em {{ record.updated_at.strftime('%d/%m/%Y %H:%M') if record.updated_at else '—' }}</p></div><div class="record-actions">{% if show_archived %}<form method="post" action="/{{ module.slug }}/{{ record.id }}/restore"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Recuperar</button></form>{{ permanent_delete_form(module.slug, record.id, csrf_token) }}{% else %}<a href="/{{ module.slug }}/{{ record.id }}/edit">Editar</a><form method="post" action="/{{ module.slug }}/{{ record.id }}/archive" onsubmit="return confirm('Eliminar este registo da lista? Os dados serão preservados e poderão ser recuperados.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Eliminar</button></form>{% endif %}</div></article>
-  {% endfor %}</div>{% else %}<div class="empty-state"><span class="empty-icon">✦</span><h3>Ainda não há registos.</h3><p>Adicionem o primeiro item; ficará guardado imediatamente na base de dados.</p></div>{% endif %}
-</section>
+  {% if module.slug in ['kingdom-hall', 'reception'] and ui_settings is defined %}
+    {% set venue_name = ui_settings.ceremony_venue if module.slug == 'kingdom-hall' else ui_settings.reception_venue %}
+    <section class="venue-summary" aria-label="Local principal" data-motion-card><span aria-hidden="true">{{ '♡' if module.slug == 'kingdom-hall' else '✧' }}</span><div><small>Local principal</small><strong>{{ venue_name or 'Ainda por definir' }}</strong><p>{{ ui_settings.wedding_city or 'Zona por definir' }} · usem a lista para guardar contactos, visitas e decisões.</p></div><a class="secondary-button" href="/settings#event">Alterar local</a></section>
+  {% endif %}
+  {% if message %}<div class="success-banner" role="status">{% if message == 'created' %}Registo criado com sucesso.{% elif message == 'updated' %}Alterações guardadas.{% elif message == 'restored' %}Registo recuperado com sucesso.{% elif message == 'permanently_deleted' %}Registo removido definitivamente da interface. A cópia técnica continua preservada.{% else %}Registo eliminado da lista. Os dados continuam preservados.{% endif %}</div>{% endif %}
+  {% if error %}<div class="form-error" role="alert">{% if error == 'confirmation' %}Confirmação inválida. Escreva APAGAR exatamente como indicado.{% elif error == 'not_archived' %}Só é possível apagar definitivamente um registo que já esteja nos eliminados.{% else %}A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.{% endif %}</div>{% endif %}
+  <section class="card module-workspace-card" aria-labelledby="module-workspace-title">
+    <h2 class="visually-hidden" id="module-workspace-title">Lista de {{ module.title|lower }}</h2>
+    <div class="module-toolbar">
+      <form class="module-search" method="get" action="/{{ module.slug }}" role="search" data-module-search-form>
+        {% if show_archived %}<input type="hidden" name="archived" value="true">{% endif %}
+        <span aria-hidden="true">⌕</span>
+        <label class="visually-hidden" for="module-search-{{ module.slug }}">Pesquisar {{ module.title|lower }}</label>
+        <input id="module-search-{{ module.slug }}" name="q" type="search" value="{{ search }}" maxlength="100" placeholder="Pesquisar em {{ module.title|lower }}…" autocomplete="off" data-module-search-input>
+        <button class="module-search-clear" type="button" data-module-search-clear hidden>Limpar</button>
+        <button class="secondary-button module-search-submit" type="submit">Pesquisar</button>
+      </form>
+      <div class="module-view-controls" data-density-controls hidden>
+        <span>Vista</span>
+        <div role="group" aria-label="Densidade da lista">
+          <button type="button" data-density="comfortable" aria-pressed="true" title="Vista confortável">☰</button>
+          <button type="button" data-density="compact" aria-pressed="false" title="Vista compacta">≡</button>
+        </div>
+      </div>
+    </div>
+    <div class="module-list-summary" aria-live="polite" aria-atomic="true">
+      <p><strong data-visible-count>{{ records|length }}</strong> <span data-count-label>{{ 'resultado nesta pesquisa' if search and records|length == 1 else 'resultados nesta pesquisa' if search else 'registo' if records|length == 1 else 'registos' }}</span></p>
+      <div class="module-selection-summary" data-selection-summary hidden><strong data-selected-count>0</strong> selecionados <button type="button" data-clear-selection>Limpar seleção</button></div>
+      {% if not search %}<small>Pesquisa instantânea ativa <kbd>/</kbd></small>{% endif %}
+    </div>
+    {% if records %}
+    <div class="module-table" role="table" aria-label="{{ module.title }}" aria-rowcount="{{ records|length + 1 }}">
+      <div class="module-table-head" role="row">
+        <div class="module-select-cell" role="columnheader" data-selection-cell hidden><label><span class="visually-hidden">Selecionar todos os registos visíveis</span><input type="checkbox" data-select-visible></label></div>
+        <div role="columnheader" aria-sort="none" data-sort-header="name"><button class="module-sort" type="button" data-sort="name" data-sort-kind="text" disabled>Item <span data-sort-indicator>↕</span></button></div>
+        <div role="columnheader" aria-sort="none" data-sort-header="value"><button class="module-sort" type="button" data-sort="value" data-sort-kind="number" disabled>Detalhes <span data-sort-indicator>↕</span></button></div>
+        <div role="columnheader" aria-sort="none" data-sort-header="status"><button class="module-sort" type="button" data-sort="status" data-sort-kind="text" disabled>Estado <span data-sort-indicator>↕</span></button></div>
+        <div role="columnheader" aria-sort="descending" data-sort-header="updated"><button class="module-sort" type="button" data-sort="updated" data-sort-kind="date" disabled>Atualização <span data-sort-indicator>↓</span></button></div>
+        <div role="columnheader"><span class="visually-hidden">Ações</span></div>
+      </div>
+      <div class="module-table-body" role="rowgroup" data-module-rows>
+        {% for record in records %}
+        {% set record_name = record_labels[record.id] %}
+        {% set record_status = record.status|default('', true) %}
+        {% set record_type = record.vendor_type|default('', true) %}
+        <article class="module-table-row" role="row" tabindex="0" data-module-row
+          data-search="{{ record_name }} {{ record.description|default('', true) }} {{ record.notes|default('', true) }} {{ record_status }} {{ record.category|default('', true) }} {{ record.priority|default('', true) }} {{ record.responsible|default('', true) }} {{ record.company|default('', true) }} {{ record_type }} {{ record.reference|default('', true) }}"
+          data-sort-name="{{ record_name }}"
+          data-sort-status="{{ record_status or record_type }}"
+          data-sort-value="{% if record.amount is defined %}{{ record.amount }}{% elif record.agreed_price is defined %}{{ record.agreed_price }}{% else %}0{% endif %}"
+          data-sort-updated="{{ record.updated_at.isoformat() if record.updated_at else '' }}">
+          <div class="module-select-cell" role="cell" data-selection-cell hidden><label><span class="visually-hidden">Selecionar {{ record_name }}</span><input type="checkbox" data-row-select></label></div>
+          <div class="module-primary-cell" role="cell" data-label="Item">
+            <span class="module-record-icon" aria-hidden="true">{{ module.title[:1] }}</span>
+            <div><h3>{% if show_archived %}{{ record_name }}{% else %}<a href="/{{ module.slug }}/{{ record.id }}/edit">{{ record_name }}</a>{% endif %}</h3>
+            {% if record.description is defined and record.description %}<p>{{ record.description }}</p>{% elif record.notes is defined and record.notes %}<p>{{ record.notes }}</p>{% elif record.contact_name is defined and record.contact_name %}<p>{{ record.contact_name }}</p>{% else %}<p>Registo #{{ record.id }}</p>{% endif %}</div>
+          </div>
+          <div class="module-detail-cell" role="cell" data-label="Detalhes">
+            {% if record.amount is defined %}<strong>{{ currency_symbol }}{{ '%.2f'|format(record.amount) }}</strong>
+            {% elif record.agreed_price is defined %}<strong>{{ currency_symbol }}{{ '%.2f'|format(record.agreed_price) }}</strong>
+            {% elif record.priority is defined and record.priority %}<span class="module-soft-tag">{{ record.priority }}</span>
+            {% elif record.category is defined and record.category %}<span class="module-soft-tag">{{ record.category }}</span>
+            {% elif record_type %}<span class="module-soft-tag">{{ record_type }}</span>{% else %}<span class="module-muted-value">—</span>{% endif %}
+            {% if record.due_date is defined and record.due_date %}<small>Até {{ record.due_date.strftime('%d/%m/%Y') }}</small>{% elif record.event_date is defined and record.event_date %}<small>{{ record.event_date.strftime('%d/%m/%Y') }}</small>{% elif record.expense_date is defined and record.expense_date %}<small>{{ record.expense_date.strftime('%d/%m/%Y') }}</small>{% elif record.payment_date is defined and record.payment_date %}<small>{{ record.payment_date.strftime('%d/%m/%Y') }}</small>{% endif %}
+          </div>
+          <div class="module-status-cell" role="cell" data-label="Estado">{% if record_status %}<span class="module-status" data-status="{{ record_status|lower }}">{{ record_status }}</span>{% elif record_type %}<span class="module-status is-neutral">{{ record_type }}</span>{% else %}<span class="module-muted-value">—</span>{% endif %}</div>
+          <div class="module-updated-cell" role="cell" data-label="Atualização"><time datetime="{{ record.updated_at.isoformat() if record.updated_at else '' }}">{{ record.updated_at.strftime('%d/%m/%Y') if record.updated_at else '—' }}</time>{% if record.updated_at %}<small>{{ record.updated_at.strftime('%H:%M') }}</small>{% endif %}</div>
+          <div class="record-actions module-row-actions" role="cell" data-label="Ações">
+            {% if show_archived %}
+            <form method="post" action="/{{ module.slug }}/{{ record.id }}/restore">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="module-restore-button" type="submit">Recuperar</button>
+            </form>
+            {{ permanent_delete_form(module.slug, record.id, csrf_token) }}
+            {% else %}
+            <a class="module-edit-button" href="/{{ module.slug }}/{{ record.id }}/edit">Editar</a>
+            <form method="post" action="/{{ module.slug }}/{{ record.id }}/archive" onsubmit="return confirm('Eliminar este registo da lista? Os dados serão preservados e poderão ser recuperados.')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="module-archive-button" type="submit">Eliminar</button>
+            </form>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="module-filter-empty" data-filter-empty hidden><span aria-hidden="true">⌕</span><h3>Nenhum resultado nesta lista</h3><p>Tentem pesquisar por outro nome, estado ou detalhe.</p><button class="secondary-button" type="button" data-filter-empty-clear>Limpar pesquisa</button></div>
+    {% else %}
+    <div class="empty-state module-empty-state"><span class="empty-icon">✦</span>
+      {% if search %}<h3>Não encontrámos registos.</h3><p>Limpem a pesquisa para voltar à lista completa.</p><a class="secondary-button" href="/{{ module.slug }}{% if show_archived %}?archived=true{% endif %}">Limpar pesquisa</a>
+      {% else %}<h3>Ainda não há registos.</h3><p>Adicionem o primeiro item; ficará guardado imediatamente na base de dados.</p>{% if not show_archived %}<a class="primary-button" href="/{{ module.slug }}/new">Criar primeiro registo</a>{% endif %}{% endif %}
+    </div>
+    {% endif %}
+  </section>
+</div>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/module-workspace.js') }}" defer></script>{% endblock %}

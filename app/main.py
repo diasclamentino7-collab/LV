@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import get_settings
-from app.routes import auth, communication_panel, exports, health, moodboard, pages, web
+from app.routes import auth, communication_panel, exports, guests, health, moodboard, pages, web
 
 
 @asynccontextmanager
@@ -64,6 +64,8 @@ def create_app() -> FastAPI:
     application.include_router(moodboard.router)
     application.include_router(communication_panel.router)
     application.include_router(exports.router)
+    # Static guest routes must precede the generic ``/{slug}`` module router.
+    application.include_router(guests.router)
     application.include_router(pages.router)
     application.include_router(health.router, prefix="/api")
     return application

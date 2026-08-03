@@ -33,9 +33,11 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/motion.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/communication-drawer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/command-palette.css') }}">
     {% block styles %}{% endblock %}
     <script src="{{ url_for('static', path='js/motion.js') }}" defer></script>
     <script src="{{ url_for('static', path='js/app.js') }}" defer></script>
+    <script src="{{ url_for('static', path='js/command-palette.js') }}" defer></script>
     {% if theme is defined %}<style>:root{--primary:{{ theme.primary }};--primary-soft:{{ theme.secondary }};--accent:{{ theme.accent }};--background:{{ theme.background }};{% if theme.on_primary is defined %}--on-primary:{{ theme.on_primary }};{% endif %}}</style>{% endif %}
   </head>
   <body>
@@ -92,7 +94,16 @@
           {% set section_titles = {'dashboard': 'Visão geral', 'checklist': 'Checklist', 'timeline': 'Cronograma', 'budget': 'Orçamento', 'payments': 'Pagamentos', 'expenses': 'Despesas', 'vendors': 'Fornecedores', 'guests': 'Convidados', 'table-plan': 'Plano de Mesas', 'kingdom-hall': 'Salão do Reino', 'reception': 'Copo de Água', 'legal-process': 'Processo Legal', 'attire': 'Roupa', 'honeymoon': 'Lua de Mel', 'home': 'Casa', 'gifts': 'Presentes', 'documents': 'Documentos', 'moodboard': 'Moodboard', 'communication': 'Comunicação', 'activity': 'Atividade', 'deleted': 'Todos os eliminados', 'settings': 'Configurações'} %}
           <div class="breadcrumb"><a href="/dashboard">LV</a><i>/</i><strong>{{ section_titles.get(current_section, 'Visão geral') }}</strong></div>
           <div class="header-actions">
-            <a class="icon-button" href="/moodboard" aria-label="Pesquisar inspirações"><span data-motion-icon>⌕</span></a>
+            <button
+              class="icon-button command-palette-trigger"
+              type="button"
+              data-motion-modal-open="command-palette"
+              aria-haspopup="dialog"
+              aria-controls="command-palette"
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="Pesquisar e abrir ações rápidas"
+              title="Pesquisa rápida (Ctrl+K)"
+            ><span data-motion-icon aria-hidden="true">⌕</span><kbd aria-hidden="true">⌘K</kbd></button>
             <button class="icon-button notification" type="button" data-motion-action="communication" data-communication-trigger aria-haspopup="dialog" aria-controls="communication-drawer" aria-label="Abrir centro de comunicação"><span data-motion-icon>✦</span></button>
             <details class="account-menu"><summary class="header-avatar" aria-label="Menu de conta">{{ request.session.get('user_name', 'LV')[:2]|upper }}</summary><div><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><a href="/deleted">Todos os eliminados</a><a href="/account/password">Alterar password</a><form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Terminar sessão</button></form></div></details>
           </div>
@@ -100,6 +111,7 @@
         <main class="content" id="main-content" tabindex="-1" data-motion-page>{% block content %}{% endblock %}</main>
       </div>
     </div>
+    {% include "_command_palette.html" %}
     {% include "_communication_drawer.html" %}
     <script>
       if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js");

@@ -1,27 +1,101 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Editar' if record else 'Adicionar' }} {{ module.title }} · {{ display_app_name|default(app_name) }}{% endblock %}
+{% set is_editing = record is not none %}
+{% set mode_label = 'Editar' if is_editing else 'Adicionar' %}
+{% set save_label = 'Guardar alterações' if is_editing else 'Criar registo' %}
+{% block title %}{{ mode_label }} {{ module.title }} · {{ display_app_name|default(app_name) }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='css/form-workspace.css') }}">{% endblock %}
 {% block content %}
-<section class="page-intro">
-  <div><p class="eyebrow">{{ module.title }}</p><h1>{{ 'Editar registo' if record else 'Novo registo' }}</h1><p class="intro-copy">Preencham os dados e guardem quando estiverem prontos.</p></div>
-  <a class="secondary-button" href="/{{ module.slug }}">Cancelar</a>
-</section>
-{% if request.query_params.get('error') %}<div class="form-error">Não foi possível guardar. Verifiquem os campos e confirmem que não existe outro registo com o mesmo nome.</div>{% endif %}
-<form method="post" class="card form-grid record-form">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  {% for field in module.fields %}
-  {% set value = record|attr(field.name) if record else '' %}
-  {% if not record and ui_settings is defined and field.name == 'assignee' %}{% set value = ui_settings.default_assignee %}{% endif %}
-  {% if not record and ui_settings is defined and field.name == 'priority' %}{% set value = ui_settings.default_task_priority %}{% endif %}
-  {% if value and field.kind == 'datetime-local' %}{% set value = value.strftime('%Y-%m-%dT%H:%M') %}{% endif %}
-  <label>{{ field.label }}
-    {% if field.kind == 'textarea' %}<textarea name="{{ field.name }}">{{ value or '' }}</textarea>
-    {% elif field.kind == 'category' %}{% if categories %}<select name="{{ field.name }}" required><option value="">Escolher categoria</option>{% for item in categories %}<option value="{{ item.id }}" {% if value == item.id %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select>{% else %}<a class="secondary-button" href="/budget/new">Criar primeiro uma categoria</a>{% endif %}
-    {% elif field.kind == 'vendor' %}<select name="{{ field.name }}"><option value="">Sem fornecedor</option>{% for item in vendors %}<option value="{{ item.id }}" {% if value == item.id %}selected{% endif %}>{{ item.company }}</option>{% endfor %}</select>
-    {% elif field.kind == 'select' %}<select name="{{ field.name }}">{% for option in field.options %}<option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option or '—' }}</option>{% endfor %}</select>
-    {% else %}<input name="{{ field.name }}" type="{{ field.kind }}" value="{{ value or '' }}" {% if field.kind == 'number' %}step="0.01" min="0"{% endif %} {% if loop.first or field.required %}required{% endif %}>
+<section class="form-workspace-page" data-form-page>
+  <section class="page-intro form-workspace-intro">
+    <div><a class="form-back-link" href="/{{ module.slug }}" data-form-cancel>← Voltar a {{ module.title }}</a><p class="eyebrow">{{ module.title }} · {{ 'Registo existente' if is_editing else 'Novo registo' }}</p><h1>{{ 'Editar registo' if is_editing else 'Adicionar com confiança' }}</h1><p class="intro-copy">Organizem a informação ao vosso ritmo. Nada é alterado até escolherem guardar.</p></div>
+    {% if is_editing and record.updated_at %}
+    <div class="form-updated-card" aria-label="Informação da última atualização">
+      <span class="form-updated-icon" aria-hidden="true">✓</span>
+      <span>
+        <small>Última atualização</small>
+        <strong><time datetime="{{ record.updated_at.isoformat() }}">{{ record.updated_at.strftime('%d/%m/%Y às %H:%M') }}</time></strong>
+        {% if record.updated_by_id %}<em>{% if record.updated_by_id == request.session.get('user_id') %}por {{ request.session.get('user_name', 'este utilizador') }}{% else %}por outro utilizador{% endif %}</em>{% endif %}
+      </span>
+    </div>
     {% endif %}
-  </label>
-  {% endfor %}
-  <div class="form-actions"><span>Os dados são guardados diretamente na base de dados.</span><button class="primary-button" type="submit">Guardar alterações</button></div>
-</form>
+  </section>
+  {% if request.query_params.get('error') %}<div class="form-workspace-alert form-error" role="alert"><span aria-hidden="true">!</span><div><strong>Não foi possível guardar.</strong><p>Revejam os campos assinalados e confirmem que não existe outro registo com o mesmo nome.</p></div></div>{% endif %}
+  <form method="post" class="record-form form-workspace" data-form-workspace data-cancel-url="/{{ module.slug }}" data-form-mode="{{ 'edit' if is_editing else 'create' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <section class="form-command-bar" aria-label="Estado e ações do formulário">
+      <div class="form-save-status" data-form-status data-state="clean" role="status" aria-live="polite">
+        <span class="form-status-dot" aria-hidden="true"></span>
+        <span><strong data-form-state>{{ 'Tudo guardado' if is_editing else 'Pronto para preencher' }}</strong><small data-form-state-detail>{{ 'Sem alterações pendentes' if is_editing else 'Os dados só serão enviados ao guardar' }}</small></span>
+      </div>
+      <div class="form-progress-compact" aria-label="Progresso de preenchimento"><span><strong data-form-progress-value>0%</strong> preenchido</span><progress value="0" max="100" data-form-progress>0%</progress></div>
+      <div class="form-command-actions">
+        <a class="form-cancel-button" href="/{{ module.slug }}" data-form-cancel>Cancelar</a>
+        <button class="primary-button form-save-button" type="submit" data-form-submit data-motion-action="save"><span class="form-save-icon" aria-hidden="true">✓</span><span>{{ save_label }}</span><kbd aria-hidden="true">⌘S</kbd></button>
+      </div>
+    </section>
+    <div class="form-workspace-layout">
+      <section class="form-fields-card" aria-labelledby="form-fields-title">
+        <header class="form-card-heading"><div><p class="eyebrow">Informação</p><h2 id="form-fields-title">Detalhes do registo</h2><p>Os campos com <span class="form-required-symbol" aria-hidden="true">•</span> são obrigatórios.</p></div><span class="form-field-count"><strong data-form-filled-count>0</strong> preenchidos</span></header>
+        <div class="form-field-grid">
+          {% for field in module.fields %}
+          {% set value = record|attr(field.name) if is_editing else '' %}
+          {% if not is_editing and ui_settings is defined and field.name == 'assignee' %}{% set value = ui_settings.default_assignee %}{% endif %}
+          {% if not is_editing and ui_settings is defined and field.name == 'priority' %}{% set value = ui_settings.default_task_priority %}{% endif %}
+          {% if value and field.kind == 'datetime-local' %}{% set value = value.strftime('%Y-%m-%dT%H:%M') %}{% endif %}
+          {% if value and field.kind == 'date' %}{% set value = value.strftime('%Y-%m-%d') %}{% endif %}
+          {% set is_required = loop.first or field.required %}
+          {% set input_type = field.kind %}
+          {% if field.kind == 'text' and field.name == 'email' %}{% set input_type = 'email' %}{% endif %}
+          {% if field.kind == 'text' and field.name == 'phone' %}{% set input_type = 'tel' %}{% endif %}
+          {% if field.kind == 'text' and field.name in ('website', 'source_url') %}{% set input_type = 'url' %}{% endif %}
+          {% set is_wide = field.kind == 'textarea' or field.name in ('source_url', 'website') %}
+          {% set control_id = 'field-' ~ field.name %}{% set hint_id = control_id ~ '-hint' %}{% set error_id = control_id ~ '-error' %}
+          <div class="form-field{% if is_wide %} is-wide{% endif %}" data-form-field style="--field-order: {{ loop.index0 }}">
+            <label class="form-field-label" for="{{ control_id }}"><span>{{ field.label }}</span>{% if is_required %}<span class="form-required-symbol" aria-hidden="true">•</span><span class="visually-hidden">(obrigatório)</span>{% else %}<small>Opcional</small>{% endif %}</label>
+            {% if field.kind == 'textarea' %}
+            <textarea id="{{ control_id }}" name="{{ field.name }}" rows="3" data-form-control data-auto-resize aria-describedby="{{ hint_id }} {{ error_id }}" {% if is_required %}required{% endif %}>{{ value or '' }}</textarea>
+            {% elif field.kind == 'category' %}
+              {% if categories %}
+              <select id="{{ control_id }}" name="{{ field.name }}" data-form-control aria-describedby="{{ hint_id }} {{ error_id }}" required>
+                <option value="">Escolher categoria</option>
+                {% for item in categories %}<option value="{{ item.id }}" {% if value == item.id %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+              </select>
+              {% else %}
+              <div class="form-related-empty"><span aria-hidden="true">+</span><p>Ainda não existe uma categoria.</p><a class="secondary-button" href="/budget/new">Criar categoria</a></div>
+              {% endif %}
+            {% elif field.kind == 'vendor' %}
+            <select id="{{ control_id }}" name="{{ field.name }}" data-form-control aria-describedby="{{ hint_id }} {{ error_id }}" {% if is_required %}required{% endif %}>
+              <option value="">Sem fornecedor</option>{% for item in vendors %}<option value="{{ item.id }}" {% if value == item.id %}selected{% endif %}>{{ item.company }}</option>{% endfor %}
+            </select>
+            {% elif field.kind == 'select' %}
+            <select id="{{ control_id }}" name="{{ field.name }}" data-form-control aria-describedby="{{ hint_id }} {{ error_id }}" {% if is_required %}required{% endif %}>
+              {% for option in field.options %}<option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option or '—' }}</option>{% endfor %}
+            </select>
+            {% elif field.kind == 'number' %}
+            <div class="form-input-affix"><span aria-hidden="true">{{ currency_symbol|default('€') }}</span><input id="{{ control_id }}" name="{{ field.name }}" type="number" value="{{ value or '' }}" step="0.01" min="0" inputmode="decimal" placeholder="0,00" data-form-control aria-describedby="{{ hint_id }} {{ error_id }}" {% if is_required %}required{% endif %}></div>
+            {% else %}
+            <input id="{{ control_id }}" name="{{ field.name }}" type="{{ input_type }}" value="{{ value or '' }}" data-form-control aria-describedby="{{ hint_id }} {{ error_id }}" {% if input_type == 'email' %}autocomplete="email" inputmode="email" placeholder="nome@exemplo.pt"{% endif %} {% if input_type == 'tel' %}autocomplete="tel" inputmode="tel" placeholder="+351 900 000 000"{% endif %} {% if input_type == 'url' %}autocomplete="url" inputmode="url" placeholder="https://"{% endif %} {% if input_type in ('date', 'datetime-local') %}autocomplete="off"{% endif %} {% if is_required %}required{% endif %}>
+            {% endif %}
+            <small class="form-field-hint" id="{{ hint_id }}">{% if field.kind == 'number' %}Valor igual ou superior a zero.{% elif field.kind == 'date' %}Escolham uma data no calendário.{% elif field.kind == 'datetime-local' %}Escolham a data e a hora.{% elif input_type == 'url' %}Incluam o endereço completo, começando por https://.{% elif field.kind == 'textarea' %}Podem acrescentar todos os detalhes úteis.{% elif field.kind == 'category' and not categories %}Criem primeiro a categoria necessária.{% else %}&nbsp;{% endif %}</small>
+            <small class="form-field-error" id="{{ error_id }}" data-form-field-error aria-live="polite"></small>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      <aside class="form-guidance-card" aria-label="Ajuda para preencher e guardar">
+        <div class="form-completion-ring" data-form-ring style="--form-progress: 0%"><strong data-form-ring-value>0%</strong></div>
+        <div><p class="eyebrow">Progresso</p><h2>Construam sem pressa</h2><p data-form-progress-copy>Comecem pelos dados que já conhecem. Os restantes podem ficar para depois.</p></div>
+        <div class="form-guidance-divider"></div>
+        <ul class="form-shortcuts" aria-label="Atalhos de teclado">
+          <li><span>Guardar</span><kbd>Ctrl</kbd><i>+</i><kbd>S</kbd></li>
+          <li><span>Cancelar com segurança</span><kbd>Esc</kbd></li>
+        </ul>
+        <div class="form-database-note"><span aria-hidden="true">✦</span><p><strong>Dados protegidos</strong>Ao guardar, este registo fica imediatamente na base de dados e disponível para os dois.</p></div>
+        {% if is_editing and record.created_at %}<p class="form-created-note">Criado em <time datetime="{{ record.created_at.isoformat() }}">{{ record.created_at.strftime('%d/%m/%Y') }}</time></p>{% endif %}
+      </aside>
+    </div>
+    <footer class="form-footer-actions"><div><span class="form-footer-lock" aria-hidden="true">✓</span><p><strong>Pronto quando vocês estiverem.</strong><small>Confirmem os dados antes de guardar.</small></p></div><div><a class="form-cancel-button" href="/{{ module.slug }}" data-form-cancel>Cancelar</a><button class="primary-button form-save-button" type="submit" data-motion-action="save">{{ save_label }}</button></div></footer>
+  </form>
+</section>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/form-workspace.js') }}" defer></script>{% endblock %}
