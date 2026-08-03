@@ -135,4 +135,4 @@ def test_table_map_assets_are_available_in_the_pwa() -> None:
 
     assert '"/static/css/table-plan.css"' in service_worker
     assert '"/static/js/table-plan.js"' in service_worker
-    assert 'const CACHE = "lv-wedding-v10"' in service_worker
+    assert 'const CACHE = "lv-wedding-v12"' in service_worker

@@ -67,7 +67,8 @@
       .find(control => !control.validity.valid);
     if (!(invalid instanceof HTMLElement)) return;
     invalid.focus({ preventScroll: true });
-    invalid.scrollIntoView({ behavior: "smooth", block: "center" });
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    invalid.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" });
   };
 
   document.querySelectorAll("[data-form-workspace]").forEach(form => {
@@ -81,6 +82,9 @@
     const ring = form.querySelector("[data-form-ring]");
     const ringValue = form.querySelector("[data-form-ring-value]");
     const progressCopy = form.querySelector("[data-form-progress-copy]");
+    const characterCounters = [...form.querySelectorAll("[data-form-character-count]")];
+    const submitLabels = [...form.querySelectorAll("[data-form-submit-label]")];
+    const initialSubmitLabels = new Map(submitLabels.map(label => [label, label.textContent]));
     const cancelUrl = form.dataset.cancelUrl || "/dashboard";
     const isEdit = form.dataset.formMode === "edit";
     let initialSnapshot = formSnapshot(form);
@@ -96,19 +100,31 @@
 
     const updateProgress = () => {
       const filled = controls.filter(isFilled).length;
-      const percentage = controls.length ? Math.round((filled / controls.length) * 100) : 100;
+      const essential = controls.filter(control => control.required);
+      const essentialFilled = essential.filter(isFilled).length;
+      const percentage = essential.length
+        ? Math.round((essentialFilled / essential.length) * 100)
+        : 100;
       if (progress) progress.value = percentage;
-      if (progressValue) progressValue.textContent = `${percentage}%`;
-      if (filledCount) filledCount.textContent = `${filled} de ${controls.length}`;
-      if (ring) ring.style.setProperty("--form-progress", `${percentage}%`);
-      if (ringValue) ringValue.textContent = `${percentage}%`;
+      if (progressValue) progressValue.textContent = percentage + "%";
+      if (filledCount) filledCount.textContent = filled + " de " + controls.length;
+      if (ring) ring.style.setProperty("--form-progress", percentage + "%");
+      if (ringValue) ringValue.textContent = percentage + "%";
       if (progressCopy) {
         progressCopy.textContent = percentage === 100
-          ? "Tudo preenchido. Confirmem os detalhes e guardem quando estiverem prontos."
+          ? "Campos essenciais completos. Confirmem os detalhes antes de guardar."
           : percentage >= 50
-            ? "Já está bem encaminhado. Podem guardar agora e completar mais tarde."
-            : "Comecem pelos dados que já conhecem. Os restantes podem ficar para depois.";
+            ? "O essencial está bem encaminhado. Completem os campos assinalados."
+            : "Comecem pelos dados indispensáveis. Os restantes podem ficar para depois.";
       }
+    };
+
+    const updateCharacterCount = control => {
+      if (!(control instanceof HTMLTextAreaElement)) return;
+      const counter = control.closest("[data-form-field]")?.querySelector("[data-form-character-count]");
+      if (!counter) return;
+      const count = control.value.length;
+      counter.textContent = count + (count === 1 ? " carácter" : " caracteres");
     };
 
     const updateDirtyState = () => {
@@ -147,8 +163,10 @@
 
     controls.forEach(control => {
       if (control.matches("[data-auto-resize]")) resizeTextarea(control);
+      updateCharacterCount(control);
       control.addEventListener("input", () => {
         if (control.matches("[data-auto-resize]")) resizeTextarea(control);
+        updateCharacterCount(control);
         if (control.getAttribute("aria-invalid") === "true") validateControl(control, true);
         else control.setCustomValidity("");
         updateProgress();
@@ -188,6 +206,10 @@
       }
       submitting = true;
       dirty = false;
+      form.setAttribute("aria-busy", "true");
+      submitLabels.forEach(label => {
+        label.textContent = "A guardar…";
+      });
       setStatus("saving", "A guardar…", "A enviar diretamente para a base de dados");
     });
 
@@ -201,6 +223,14 @@
       if (submitting) initialSnapshot = formSnapshot(form);
       submitting = false;
       leaving = false;
+      form.setAttribute("aria-busy", "false");
+      initialSubmitLabels.forEach((label, element) => {
+        element.textContent = label;
+      });
+      characterCounters.forEach(counter => {
+        const textarea = counter.closest("[data-form-field]")?.querySelector("textarea");
+        if (textarea) updateCharacterCount(textarea);
+      });
       updateProgress();
       updateDirtyState();
     });

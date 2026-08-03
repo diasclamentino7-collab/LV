@@ -4,12 +4,12 @@
   const dashboard = document.querySelector("[data-dashboard-live]");
   if (!dashboard) return;
 
-  const liveElements = new Map(
-    [...dashboard.querySelectorAll("[data-live-key]")].map((element) => [
-      element.dataset.liveKey,
-      element,
-    ])
-  );
+  const liveElements = new Map();
+  for (const element of dashboard.querySelectorAll("[data-live-key]")) {
+    const key = element.dataset.liveKey;
+    if (!liveElements.has(key)) liveElements.set(key, []);
+    liveElements.get(key).push(element);
+  }
   const initialTarget = dashboard.dataset.weddingTarget
     ? new Date(dashboard.dataset.weddingTarget).getTime()
     : null;
@@ -24,41 +24,43 @@
   };
 
   const updateText = (key, value) => {
-    const element = liveElements.get(key);
-    if (!element) return;
-    const nextValue = String(value);
-    const previousValue = element.textContent.trim();
-    if (previousValue === nextValue) return;
-    element.textContent = nextValue;
-    announceUpdate(element, previousValue, nextValue);
+    const elements = liveElements.get(key) ?? [];
+    for (const element of elements) {
+      const nextValue = String(value);
+      const previousValue = element.textContent.trim();
+      if (previousValue === nextValue) continue;
+      element.textContent = nextValue;
+      announceUpdate(element, previousValue, nextValue);
+    }
   };
 
   const updateNumber = (key, value, options = {}) => {
-    const element = liveElements.get(key);
-    if (!element) return;
+    const elements = liveElements.get(key) ?? [];
     const numericValue = Number(value);
     if (!Number.isFinite(numericValue)) {
       updateText(key, options.fallback ?? String(value));
       return;
     }
-    const nextValue = String(numericValue);
-    const previousValue = element.dataset.liveValue ?? "";
-    if (previousValue === nextValue) return;
-    element.dataset.liveValue = nextValue;
-    if (window.LVMotion?.update(
-      element,
-      numericValue,
-      {
-        type: "number",
-        duration: options.duration,
-        highlight: options.highlight,
-        preserveFormat: true,
-      }
-    )) return;
-    const formatted = options.format ? options.format(numericValue) : nextValue;
-    const previousText = element.textContent.trim();
-    element.textContent = formatted;
-    announceUpdate(element, previousText, formatted);
+    for (const element of elements) {
+      const nextValue = String(numericValue);
+      const previousValue = element.dataset.liveValue ?? "";
+      if (previousValue === nextValue) continue;
+      element.dataset.liveValue = nextValue;
+      if (window.LVMotion?.update(
+        element,
+        numericValue,
+        {
+          type: "number",
+          duration: options.duration,
+          highlight: options.highlight,
+          preserveFormat: true,
+        }
+      )) continue;
+      const formatted = options.format ? options.format(numericValue) : nextValue;
+      const previousText = element.textContent.trim();
+      element.textContent = formatted;
+      announceUpdate(element, previousText, formatted);
+    }
   };
 
   const updateMoney = (key, symbol, value) => {
@@ -178,6 +180,7 @@
     updateNumber("task_percentage", payload.task_percentage);
     updateNumber("completed_tasks", payload.completed_tasks);
     updateNumber("tasks", payload.tasks);
+    updateNumber("open_tasks", Math.max(0, payload.tasks - payload.completed_tasks));
     updateMoney("budget_expenses", payload.currency_symbol, payload.expenses);
     updateMoney("budget_total", payload.currency_symbol, payload.budget_total);
     updateMoney("budget_allocated", payload.currency_symbol, payload.budget_allocated);

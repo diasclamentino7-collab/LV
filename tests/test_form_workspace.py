@@ -139,6 +139,7 @@ def test_every_canonical_module_keeps_create_and_edit_workflows(monkeypatch):
 def test_form_workspace_has_keyboard_safety_without_background_business_writes():
     javascript = (PROJECT_ROOT / "app/static/js/form-workspace.js").read_text(encoding="utf-8")
     stylesheet = (PROJECT_ROOT / "app/static/css/form-workspace.css").read_text(encoding="utf-8")
+    template = (PROJECT_ROOT / "app/templates/module_form.html").read_text(encoding="utf-8")
 
     assert "event.ctrlKey || event.metaKey" in javascript
     assert "form.requestSubmit" in javascript
@@ -147,9 +148,16 @@ def test_form_workspace_has_keyboard_safety_without_background_business_writes()
     assert "window.confirm" in javascript
     assert "form.checkValidity()" in javascript
     assert "resizeTextarea" in javascript
+    assert "control.required" in javascript
+    assert "updateCharacterCount" in javascript
+    assert 'form.setAttribute("aria-busy", "true")' in javascript
     assert "fetch(" not in javascript
     assert "localStorage" not in javascript
     assert "sessionStorage" not in javascript
     assert "position: sticky" in stylesheet
     assert "prefers-reduced-motion: reduce" in stylesheet
     assert "@media (max-width: 560px)" in stylesheet
+    assert "data-required=" in template
+    assert "data-form-character-count" in template
+    assert 'aria-busy="false"' in template
+    assert "data-form-submit-label" in template

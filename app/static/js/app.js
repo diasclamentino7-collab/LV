@@ -1,6 +1,163 @@
 (() => {
   "use strict";
 
+  if ("serviceWorker" in navigator) {
+    void navigator.serviceWorker.register("/static/sw.js").catch(() => {
+      // Offline support is progressive; the website remains fully usable.
+    });
+  }
+
+  const menuButton = document.querySelector(".menu-button");
+  const sidebar = document.querySelector(".sidebar");
+  const sidebarOverlay = document.querySelector(".sidebar-overlay");
+  const sidebarClose = document.querySelector(".sidebar-close");
+  const mobileNavigation = window.matchMedia("(max-width: 850px)");
+  const focusableSelector = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "summary",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",");
+  let navigationReturnFocus = null;
+
+  const navigationIsOpen = () => (
+    document.body.classList.contains("navigation-open")
+  );
+
+  const setSidebarAvailability = available => {
+    if (!sidebar) return;
+    sidebar.toggleAttribute("inert", !available);
+    sidebar.setAttribute("aria-hidden", available ? "false" : "true");
+    sidebarOverlay?.setAttribute(
+      "aria-hidden",
+      available && mobileNavigation.matches ? "false" : "true",
+    );
+  };
+
+  const sidebarFocusableElements = () => (
+    sidebar
+      ? [...sidebar.querySelectorAll(focusableSelector)].filter(element => (
+          !element.hasAttribute("disabled")
+          && element.getAttribute("aria-hidden") !== "true"
+          && element.getClientRects().length > 0
+        ))
+      : []
+  );
+
+  const closeNavigation = (restoreFocus = true) => {
+    if (!mobileNavigation.matches) return;
+    const wasOpen = navigationIsOpen();
+    document.body.classList.remove("navigation-open");
+    menuButton?.setAttribute("aria-expanded", "false");
+    setSidebarAvailability(false);
+    if (wasOpen && restoreFocus) {
+      const target = (
+        navigationReturnFocus instanceof HTMLElement
+          ? navigationReturnFocus
+          : menuButton
+      );
+      target?.focus();
+    }
+    navigationReturnFocus = null;
+  };
+
+  const openNavigation = () => {
+    if (!mobileNavigation.matches || !sidebar) return;
+    navigationReturnFocus = document.activeElement;
+    setSidebarAvailability(true);
+    document.body.classList.add("navigation-open");
+    menuButton?.setAttribute("aria-expanded", "true");
+    window.requestAnimationFrame(() => {
+      (sidebarClose || sidebarFocusableElements()[0])?.focus();
+    });
+  };
+
+  const syncNavigationLayout = () => {
+    const focusedInsideSidebar = sidebar?.contains(document.activeElement);
+    document.body.classList.remove("navigation-open");
+    menuButton?.setAttribute("aria-expanded", "false");
+    setSidebarAvailability(!mobileNavigation.matches);
+    if (focusedInsideSidebar) {
+      if (mobileNavigation.matches) menuButton?.focus();
+      else sidebar?.querySelector(".nav-item.is-active")?.focus();
+    }
+    navigationReturnFocus = null;
+  };
+
+  menuButton?.addEventListener("click", () => {
+    if (navigationIsOpen()) closeNavigation();
+    else openNavigation();
+  });
+  sidebarClose?.addEventListener("click", () => closeNavigation());
+  sidebarOverlay?.addEventListener("click", () => closeNavigation());
+  sidebar?.querySelectorAll("a").forEach(link => {
+    link.addEventListener("click", () => closeNavigation(false));
+  });
+
+  document.addEventListener("keydown", event => {
+    if (!mobileNavigation.matches || !navigationIsOpen()) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeNavigation();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = sidebarFocusableElements();
+    if (!focusable.length) {
+      event.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (
+      event.shiftKey
+      && (
+        document.activeElement === first
+        || !sidebar?.contains(document.activeElement)
+      )
+    ) {
+      event.preventDefault();
+      last.focus();
+    } else if (
+      !event.shiftKey
+      && (
+        document.activeElement === last
+        || !sidebar?.contains(document.activeElement)
+      )
+    ) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
+  if (typeof mobileNavigation.addEventListener === "function") {
+    mobileNavigation.addEventListener("change", syncNavigationLayout);
+  } else {
+    mobileNavigation.addListener(syncNavigationLayout);
+  }
+  syncNavigationLayout();
+
+  window.requestAnimationFrame(() => {
+    sidebar?.querySelector(".nav-item.is-active")?.scrollIntoView({
+      block: "nearest",
+    });
+  });
+
+  const shellHeader = document.querySelector(".header");
+  let headerFrame = 0;
+  const syncHeaderDepth = () => {
+    headerFrame = 0;
+    shellHeader?.classList.toggle("is-scrolled", window.scrollY > 6);
+  };
+  window.addEventListener("scroll", () => {
+    if (headerFrame) return;
+    headerFrame = window.requestAnimationFrame(syncHeaderDepth);
+  }, { passive: true });
+  syncHeaderDepth();
+
   const accountMenus = [...document.querySelectorAll("details.account-menu")];
 
   const closeAccountMenus = (except = null, restoreFocus = false) => {
@@ -13,6 +170,10 @@
 
   accountMenus.forEach(menu => {
     menu.addEventListener("toggle", () => {
+      menu.querySelector("summary")?.setAttribute(
+        "aria-expanded",
+        menu.open ? "true" : "false",
+      );
       if (menu.open) closeAccountMenus(menu);
     });
   });

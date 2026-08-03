@@ -1,6 +1,6 @@
 {% macro card(title='', subtitle='', class_name='', action_url='', action_label='Abrir', tilt=0) %}
 <section class="card {{ class_name }}" data-motion-card{% if tilt %} data-motion-tilt="{{ tilt }}"{% endif %}>
-  {% if title %}<div class="card-heading"{% if tilt %} data-motion-depth="front"{% endif %}><div><h2>{{ title }}</h2>{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}</div>{% if action_url %}<a class="quiet-button" href="{{ action_url }}" aria-label="{{ action_label }}">↗</a>{% endif %}</div>{% endif %}
+  {% if title %}<div class="card-heading"{% if tilt %} data-motion-depth="front"{% endif %}><div><h2>{{ title }}</h2>{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}</div>{% if action_url %}<a class="quiet-button" href="{{ action_url }}"><span>{{ action_label }}</span><i aria-hidden="true">↗</i></a>{% endif %}</div>{% endif %}
   {{ caller() }}
 </section>
 {% endmacro %}

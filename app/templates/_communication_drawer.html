@@ -12,7 +12,7 @@
         <p class="communication-eyebrow">Centro partilhado</p>
         <h2 id="communication-drawer-title">Comunicação</h2>
         <p id="communication-drawer-description">
-          Ideias, decisões e lembretes guardados para os dois.
+          Registem uma ideia em segundos e mantenham decisões, notas e lembretes acessíveis aos dois.
         </p>
       </div>
       <button
@@ -20,92 +20,151 @@
         type="button"
         data-communication-close
         aria-label="Fechar centro de comunicação"
-      >×</button>
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+      </button>
     </header>
 
-    <form class="communication-search" role="search" data-communication-search>
-      <label for="communication-search-input">Pesquisar na comunicação</label>
-      <div>
-        <span aria-hidden="true">⌕</span>
-        <input
-          id="communication-search-input"
-          name="q"
-          type="search"
-          maxlength="100"
-          placeholder="Pesquisar notas, ideias ou responsáveis…"
-          autocomplete="off"
-        >
-      </div>
-    </form>
-
-    <details class="communication-compose">
-      <summary>Adicionar rapidamente <span aria-hidden="true">＋</span></summary>
-      <form data-communication-create>
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="communication-form-row">
-          <label>
-            <span>Tipo</span>
-            <select name="category">
-              <option>Nota</option>
-              <option>Ideia</option>
-              <option>Decisão</option>
-              <option>Lembrete</option>
-              <option>Tarefa rápida</option>
-            </select>
-          </label>
-          <label>
-            <span>Prioridade</span>
-            <select name="priority">
-              <option>Baixa</option>
-              <option selected>Média</option>
-              <option>Alta</option>
-            </select>
-          </label>
+    <div class="communication-content">
+      <form class="communication-search" role="search" data-communication-search>
+        <label for="communication-search-input">Pesquisar na comunicação</label>
+        <div>
+          <span class="communication-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 5 5"></path></svg>
+          </span>
+          <input
+            id="communication-search-input"
+            name="q"
+            type="search"
+            maxlength="100"
+            placeholder="Pesquisar títulos, notas ou responsáveis"
+            autocomplete="off"
+          >
+          <button
+            class="communication-search-clear"
+            type="reset"
+            data-communication-search-clear
+            aria-label="Limpar pesquisa"
+            hidden
+          >×</button>
+          <button class="communication-search-submit" type="submit">
+            Pesquisar
+          </button>
         </div>
-        <label>
-          <span>Título</span>
-          <input name="title" maxlength="200" required placeholder="O que querem registar?">
-        </label>
-        <label>
-          <span>Descrição <small>opcional</small></span>
-          <textarea name="description" maxlength="5000" rows="3"></textarea>
-        </label>
-        <div class="communication-form-row">
-          <label>
-            <span>Responsável</span>
-            <input name="responsible" maxlength="100" placeholder="Vítor, Leonor ou ambos">
-          </label>
-          <label>
-            <span>Data</span>
-            <input name="event_date" type="date">
-          </label>
-        </div>
-        <button class="communication-save" type="submit">
-          <span data-communication-save-label>Guardar</span>
-          <span class="communication-spinner" aria-hidden="true"></span>
-        </button>
       </form>
-    </details>
 
-    <div
-      class="communication-feedback"
-      data-communication-feedback
-      role="status"
-      aria-live="polite"
-    ></div>
+      <details class="communication-compose">
+        <summary
+          aria-controls="communication-quick-form"
+          aria-expanded="false"
+          data-communication-compose-summary
+        >
+          <span>
+            <strong>Novo registo rápido</strong>
+            <small>Fica imediatamente disponível para os dois.</small>
+          </span>
+          <span class="communication-compose-icon" aria-hidden="true">＋</span>
+        </summary>
+        <form id="communication-quick-form" data-communication-create aria-label="Criar registo rápido">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="communication-form-row">
+            <label>
+              <span>Tipo</span>
+              <select name="category">
+                <option>Nota</option>
+                <option>Ideia</option>
+                <option>Decisão</option>
+                <option>Lembrete</option>
+                <option>Tarefa rápida</option>
+              </select>
+            </label>
+            <label>
+              <span>Prioridade</span>
+              <select name="priority">
+                <option>Baixa</option>
+                <option selected>Média</option>
+                <option>Alta</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            <span>Título</span>
+            <input
+              name="title"
+              maxlength="200"
+              required
+              autocomplete="off"
+              placeholder="O que querem registar?"
+            >
+          </label>
+          <label>
+            <span>Descrição <small>opcional</small></span>
+            <textarea
+              name="description"
+              maxlength="5000"
+              rows="3"
+              placeholder="Contexto, próximos passos ou informação importante"
+            ></textarea>
+          </label>
+          <div class="communication-form-row">
+            <label>
+              <span>Responsável</span>
+              <input
+                name="responsible"
+                maxlength="100"
+                autocomplete="off"
+                placeholder="Vítor, Leonor ou ambos"
+              >
+            </label>
+            <label>
+              <span>Data</span>
+              <input name="event_date" type="date">
+            </label>
+          </div>
+          <div class="communication-create-actions">
+            <small>Guardado diretamente na base de dados.</small>
+            <button class="communication-save" type="submit">
+              <span data-communication-save-label>Guardar registo</span>
+              <span class="communication-spinner" aria-hidden="true"></span>
+            </button>
+          </div>
+        </form>
+      </details>
 
-    <div class="communication-results-heading">
-      <strong>Registos recentes</strong>
-      <span data-communication-count></span>
+      <div
+        class="communication-feedback"
+        data-communication-feedback
+        role="status"
+        aria-live="polite"
+      ></div>
+
+      <div class="communication-results-heading">
+        <div>
+          <strong>Registos recentes</strong>
+          <small>Selecionem um registo para ver ou editar todos os detalhes.</small>
+        </div>
+        <span data-communication-count aria-live="polite"></span>
+      </div>
+      <div
+        class="communication-records"
+        data-communication-records
+        aria-busy="true"
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
+        <div class="communication-loading" role="status">
+          <i aria-hidden="true"></i>
+          <span>A preparar a comunicação…</span>
+        </div>
+      </div>
     </div>
-    <div class="communication-records" data-communication-records aria-busy="false"></div>
 
     <footer class="communication-footer">
       <a href="/communication">
-        Abrir centro completo
+        <span>Abrir centro completo</span>
         <span aria-hidden="true">→</span>
       </a>
-      <small>Todas as alterações ficam guardadas na base de dados.</small>
+      <small>Todas as alterações ficam guardadas e identificadas.</small>
     </footer>
   </section>
 </dialog>

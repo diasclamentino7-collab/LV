@@ -43,7 +43,12 @@
     const selectionSummary = workspace.querySelector("[data-selection-summary]");
     const selectedCount = workspace.querySelector("[data-selected-count]");
     const clearSelection = workspace.querySelector("[data-clear-selection]");
+    const openSelected = workspace.querySelector("[data-open-selected]");
     const densityControls = workspace.querySelector("[data-density-controls]");
+    const statusFilter = workspace.querySelector("[data-module-status-filter]");
+    const statusFilterControl = workspace.querySelector("[data-status-filter-control]");
+    const sortSelect = workspace.querySelector("[data-module-sort-select]");
+    const sortSelectControl = workspace.querySelector("[data-sort-select-control]");
     const sortButtons = [...workspace.querySelectorAll("[data-sort]")];
     let sortKey = "updated";
     let sortDirection = "desc";
@@ -56,6 +61,25 @@
       button.disabled = false;
     });
     if (densityControls) densityControls.hidden = false;
+    if (sortSelect && sortSelectControl) {
+      sortSelect.disabled = false;
+      sortSelectControl.hidden = false;
+    }
+
+    const statuses = [...new Set(rows
+      .map(row => String(row.dataset.sortStatus || "").trim())
+      .filter(Boolean))]
+      .sort((left, right) => collator.compare(left, right));
+    if (statusFilter && statusFilterControl && statuses.length) {
+      statuses.forEach(value => {
+        const option = document.createElement("option");
+        option.value = normalize(value);
+        option.textContent = value;
+        statusFilter.append(option);
+      });
+      statusFilter.disabled = false;
+      statusFilterControl.hidden = false;
+    }
 
     const setDensity = (density, persist = false) => {
       const value = validDensities.has(density) ? density : "comfortable";
@@ -89,17 +113,22 @@
       if (count) count.textContent = String(visible);
       if (countLabel) countLabel.textContent = visible === 1 ? "registo visível" : "registos visíveis";
       if (filterEmpty) filterEmpty.hidden = visible > 0;
-      const table = workspace.querySelector(".module-table");
+      const table = workspace.querySelector(".module-table-scroll") || workspace.querySelector(".module-table");
       if (table) table.hidden = visible === 0;
       if (clearButton) clearButton.hidden = !input?.value;
       updateSelection();
     };
 
     const filterRows = () => {
-      if (!isComplete) return;
-      const terms = normalize(input?.value).split(/\s+/).filter(Boolean);
+      const terms = isComplete
+        ? normalize(input?.value).split(/\s+/).filter(Boolean)
+        : [];
+      const selectedStatus = normalize(statusFilter?.value);
       rows.forEach(row => {
-        const matches = terms.every(term => normalize(row.dataset.search).includes(term));
+        const matchesSearch = terms.every(term => normalize(row.dataset.search).includes(term));
+        const matchesStatus = !selectedStatus
+          || normalize(row.dataset.sortStatus) === selectedStatus;
+        const matches = matchesSearch && matchesStatus;
         row.hidden = !matches;
         if (!matches) {
           const checkbox = row.querySelector("[data-row-select]");
@@ -116,9 +145,10 @@
       return normalize(raw);
     };
 
-    const sortRows = (key, kind) => {
+    const sortRows = (key, kind, requestedDirection = null) => {
       if (!rowsContainer) return;
-      sortDirection = sortKey === key && sortDirection === "asc" ? "desc" : "asc";
+      sortDirection = requestedDirection
+        || (sortKey === key && sortDirection === "asc" ? "desc" : "asc");
       sortKey = key;
       const factor = sortDirection === "asc" ? 1 : -1;
       [...rows].sort((left, right) => {
@@ -135,17 +165,25 @@
         const indicator = button.querySelector("[data-sort-indicator]");
         if (indicator) indicator.textContent = active ? (sortDirection === "asc" ? "↑" : "↓") : "↕";
       });
+      if (sortSelect) {
+        const option = [...sortSelect.options].find(item => {
+          const [optionKey, optionKind, optionDirection] = item.value.split(":");
+          return optionKey === key && optionKind === kind && optionDirection === sortDirection;
+        });
+        if (option) sortSelect.value = option.value;
+      }
     };
 
     const clearSearch = () => {
       if (!input) return;
-      if (!isComplete) {
+      if (!isComplete && input.value) {
         const destination = workspace.dataset.resetUrl || window.location.pathname;
         if (window.LVMotion?.navigate) window.LVMotion.navigate(destination, { kind: "subtle" });
         else window.location.assign(destination);
         return;
       }
       input.value = "";
+      if (statusFilter) statusFilter.value = "";
       filterRows();
       input.focus();
     };
@@ -161,6 +199,11 @@
     }
     clearButton?.addEventListener("click", clearSearch);
     emptyClear?.addEventListener("click", clearSearch);
+    statusFilter?.addEventListener("change", filterRows);
+    sortSelect?.addEventListener("change", () => {
+      const [key, kind, direction] = sortSelect.value.split(":");
+      sortRows(key, kind, direction);
+    });
 
     sortButtons.forEach(button => {
       button.addEventListener("click", () => sortRows(button.dataset.sort, button.dataset.sortKind));
@@ -185,6 +228,14 @@
         if (checkbox) checkbox.checked = false;
       });
       updateSelection();
+    });
+    openSelected?.addEventListener("click", () => {
+      const destination = selectedRows()
+        .map(row => row.dataset.recordHref)
+        .find(Boolean);
+      if (!destination) return;
+      if (window.LVMotion?.navigate) window.LVMotion.navigate(destination, { kind: "subtle" });
+      else window.location.assign(destination);
     });
 
     rows.forEach(row => {

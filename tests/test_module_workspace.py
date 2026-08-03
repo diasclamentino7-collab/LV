@@ -25,6 +25,11 @@ def test_generic_module_workspace_has_accessible_progressive_enhancements() -> N
     assert "data-sort-name" in template
     assert "data-density-controls hidden" in template
     assert "data-selection-cell hidden" in template
+    assert "data-module-status-filter" in template
+    assert "data-module-sort-select" in template
+    assert "data-open-selected" in template
+    assert "data-record-href" in template
+    assert "module-card-header" in template
     assert "js/module-workspace.js" in template
     assert "css/module-workspace.css" in template
 
@@ -38,7 +43,11 @@ def test_workspace_javascript_is_local_instant_and_business_data_free() -> None:
     assert 'event.key === "Enter"' in javascript
     assert 'event.key === " "' in javascript
     assert "append(row)" in javascript
+    assert 'document.createElement("option")' in javascript
+    assert 'statusFilter?.addEventListener("change", filterRows)' in javascript
+    assert "data-record-href" not in javascript
     assert "fetch(" not in javascript
     assert "innerHTML" not in javascript
     assert "sessionStorage" not in javascript
+    assert "setTimeout" not in javascript
     assert javascript.count("localStorage") == 2

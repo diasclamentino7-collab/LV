@@ -2,13 +2,16 @@
 {% block title %}Uma pergunta · {{ display_app_name|default(app_name) }}{% endblock %}
 {% block card_class %}love-card{% endblock %}
 {% block content %}
-<span class="brand-mark">LV</span>
-<p class="eyebrow">Antes de entrar</p>
-<h1>Amas-me? ♡</h1>
-<p>Uma resposta importante antes de continuar para o vosso espaço.</p>
-<form method="post" class="love-actions">
+<div class="love-mark" aria-hidden="true"><span>LV</span><i>♡</i></div>
+<header class="auth-card-heading">
+  <p class="eyebrow">Uma pergunta antes de entrar</p>
+  <h1>Amas-me? <span aria-hidden="true">♡</span></h1>
+  <p class="auth-lead">Há respostas que tornam o planeamento ainda mais bonito.</p>
+</header>
+<form method="post" class="love-actions" data-auth-form>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button class="primary-button" name="answer" value="sim">Sim</button>
-  <button class="secondary-button" name="answer" value="simmmm">Simmmm</button>
+  <button class="primary-button" name="answer" value="sim"><span>Sim</span><i aria-hidden="true">♡</i></button>
+  <button class="secondary-button" name="answer" value="simmmm"><span>Simmmm</span><i aria-hidden="true">♡</i></button>
 </form>
+<p class="love-note">As duas opções estão certas.</p>
 {% endblock %}

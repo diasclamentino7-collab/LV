@@ -1,34 +1,45 @@
 {% extends "auth_base.html" %}
 {% block title %}Configurar {{ display_app_name|default(app_name) }}{% endblock %}
 {% block content %}
-<span class="brand-mark">LV</span>
-<p class="eyebrow">Primeira configuração</p>
-<h1>Vamos criar o vosso espaço.</h1>
-<p>Definam os dois acessos privados ao Wedding Planner.</p>
+<header class="auth-card-heading">
+  <span class="auth-mobile-mark" aria-hidden="true">LV</span>
+  <p class="eyebrow">Primeira configuração</p>
+  <h1>Vamos criar o vosso espaço.</h1>
+  <p class="auth-lead">Definam os dois acessos privados. Poderão alterar as passwords mais tarde.</p>
+</header>
 {% if request.query_params.get('error') %}
-<p class="form-error" role="alert">
-  {% if request.query_params.get('error') == 'access' %}
-    O token de instalação não está correto.
+<p class="form-error auth-message" role="alert">
+  <span aria-hidden="true">!</span><span>{% if request.query_params.get('error') == 'access' %}
+    <strong>Token de instalação inválido.</strong> Confirmem o valor configurado no servidor.
   {% else %}
-    Preencham nomes diferentes, passwords com 8 a 256 caracteres e recarreguem a página se a sessão tiver expirado.
-  {% endif %}
+    <strong>Verifiquem os dados.</strong> Usem nomes diferentes e passwords entre 8 e 256 caracteres.
+  {% endif %}</span>
 </p>
 {% endif %}
-<form method="post" class="form-grid">
+<form method="post" class="form-grid auth-form setup-form" data-auth-form>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   {% if setup_token_required %}
-  <label>
-    Token de instalação
-    <input type="password" name="setup_access_token" minlength="32" autocomplete="off" required>
+  <label class="setup-token-field">
+    <span>Token de instalação</span>
+    <span class="password-control">
+      <input type="password" name="setup_access_token" minlength="32" autocomplete="off" required data-password-input>
+      <button type="button" data-password-toggle aria-label="Mostrar token" aria-pressed="false">Mostrar</button>
+    </span>
     <small>É o valor de LV_SETUP_TOKEN definido no servidor.</small>
   </label>
   {% else %}
   <input type="hidden" name="setup_access_token" value="">
   {% endif %}
-  <label>Primeiro utilizador<input name="first_name" value="Vítor" maxlength="100" required></label>
-  <label>Password<input name="first_password" type="password" minlength="8" maxlength="256" autocomplete="new-password" required></label>
-  <label>Segundo utilizador<input name="second_name" value="Leonor" maxlength="100" required></label>
-  <label>Password<input name="second_password" type="password" minlength="8" maxlength="256" autocomplete="new-password" required></label>
-  <button class="primary-button" type="submit">Criar espaço seguro</button>
+  <fieldset class="setup-person">
+    <legend><span>1</span> Primeiro acesso</legend>
+    <label><span>Nome</span><input name="first_name" value="Vítor" maxlength="100" autocomplete="name" required></label>
+    <label><span>Password</span><span class="password-control"><input name="first_password" type="password" minlength="8" maxlength="256" autocomplete="new-password" required data-password-input><button type="button" data-password-toggle aria-label="Mostrar password do primeiro utilizador" aria-pressed="false">Mostrar</button></span><small data-password-strength>Usem pelo menos 8 caracteres.</small></label>
+  </fieldset>
+  <fieldset class="setup-person">
+    <legend><span>2</span> Segundo acesso</legend>
+    <label><span>Nome</span><input name="second_name" value="Leonor" maxlength="100" autocomplete="name" required></label>
+    <label><span>Password</span><span class="password-control"><input name="second_password" type="password" minlength="8" maxlength="256" autocomplete="new-password" required data-password-input><button type="button" data-password-toggle aria-label="Mostrar password do segundo utilizador" aria-pressed="false">Mostrar</button></span><small data-password-strength>Usem pelo menos 8 caracteres.</small></label>
+  </fieldset>
+  <button class="primary-button auth-submit" type="submit"><span data-submit-label>Criar espaço seguro</span><i aria-hidden="true">→</i></button>
 </form>
 {% endblock %}

@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="{{ theme.primary if theme is defined else '#D88BA7' }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
     <title>{% block title %}{{ display_app_name|default(app_name) }}{% endblock %}</title>
@@ -12,16 +14,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/motion.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/auth.css') }}">
     {% if theme is defined %}<style>:root{--primary:{{ theme.primary }};--primary-soft:{{ theme.secondary }};--accent:{{ theme.accent }};--background:{{ theme.background }};{% if theme.on_primary is defined %}--on-primary:{{ theme.on_primary }};{% endif %}}</style>{% endif %}
     <script src="{{ url_for('static', path='js/motion.js') }}" defer></script>
     <script src="{{ url_for('static', path='js/app.js') }}" defer></script>
+    <script src="{{ url_for('static', path='js/auth.js') }}" defer></script>
   </head>
-  <body class="auth-page">
-    <main class="auth-card {% block card_class %}{% endblock %}" data-motion-page data-motion-card data-motion-tilt="1.5">
-      {% block content %}{% endblock %}
-    </main>
-    <script>
-      if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js");
-    </script>
+  <body class="auth-page" data-auth-page>
+    <a class="skip-link" href="#auth-content">Saltar para o formulário</a>
+    <div class="auth-shell">
+      <aside class="auth-story" aria-label="LV Wedding Planner">
+        <a class="auth-brand" href="/" aria-label="LV Wedding Planner">
+          <span class="brand-mark">LV</span>
+          <span><strong>{{ display_app_name|default('LV Wedding Planner') }}</strong><small>O vosso casamento, num só lugar</small></span>
+        </a>
+        <div class="auth-story-copy">
+          <p class="eyebrow">Planeamento a dois</p>
+          <h2>Decisões mais simples.<br>Memórias mais bonitas.</h2>
+          <p>Organizem tarefas, convidados, orçamento e todos os detalhes do grande dia com tranquilidade.</p>
+          <ul aria-label="Vantagens da aplicação">
+            <li><span aria-hidden="true">✓</span> Dados guardados com segurança</li>
+            <li><span aria-hidden="true">✓</span> Preparado para Vítor e Leonor</li>
+            <li><span aria-hidden="true">✓</span> Confortável em qualquer dispositivo</li>
+          </ul>
+        </div>
+        <p class="auth-story-note"><span aria-hidden="true">♡</span> LV · O início de uma vida inteira</p>
+        <span class="auth-story-monogram" aria-hidden="true">LV</span>
+      </aside>
+      <section class="auth-stage" aria-label="Acesso à aplicação">
+        <header class="auth-stage-header">
+          <span><i aria-hidden="true"></i> Espaço privado</span>
+          <small>Ligação protegida</small>
+        </header>
+        <main id="auth-content" class="auth-card {% block card_class %}{% endblock %}" data-motion-page>
+          {% block content %}{% endblock %}
+        </main>
+        <footer class="auth-stage-footer">LV Wedding Planner <span aria-hidden="true">·</span> Planeado com carinho</footer>
+      </section>
+    </div>
   </body>
 </html>

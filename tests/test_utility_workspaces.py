@@ -24,11 +24,16 @@ def test_utility_templates_keep_server_fallbacks_and_add_progressive_controls() 
 
     assert 'method="get" action="/activity"' in activity
     assert "data-utility-sort-key" in activity
+    assert "utility-overview-grid" in activity
+    assert "activity-user" in activity
+    assert "activity-action" in activity
     assert 'method="get"' in deleted
     assert 'method="post"' in deleted
     assert 'name="csrf_token"' in deleted
     assert "permanent_delete_form" in deleted
     assert "/restore?return_to=deleted" in deleted
+    assert "utility-safety-note" in deleted
+    assert "deleted-record-icon" in deleted
 
 
 def test_utility_javascript_is_local_safe_and_instant() -> None:

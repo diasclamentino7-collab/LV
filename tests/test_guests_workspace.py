@@ -46,4 +46,4 @@ def test_guest_workspace_assets_are_in_the_pwa_cache() -> None:
     assert '"/static/js/form-workspace.js"' in service_worker
     assert '"/static/css/utility-workspaces.css"' in service_worker
     assert '"/static/js/utility-workspaces.js"' in service_worker
-    assert 'const CACHE = "lv-wedding-v10"' in service_worker
+    assert 'const CACHE = "lv-wedding-v12"' in service_worker

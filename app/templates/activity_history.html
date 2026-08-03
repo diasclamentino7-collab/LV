@@ -7,17 +7,28 @@
 {% endblock %}
 
 {% block content %}
-  <section class="page-intro">
+  {% set active_filter_count = (1 if filters.user_id else 0) + (1 if filters.module else 0) + (1 if filters.action_type else 0) + (1 if filters.date_from else 0) + (1 if filters.date_to else 0) %}
+  <section class="page-intro utility-page-intro">
     <div>
-      <p class="eyebrow">Transparência partilhada</p>
+      <div class="utility-context"><span aria-hidden="true">↺</span><p class="eyebrow">Transparência partilhada</p></div>
       <h1>Histórico de atividade</h1>
       <p class="intro-copy">Vejam o que foi alterado, por quem e quando. Os registos são apenas de leitura.</p>
     </div>
-    <a class="secondary-button" href="/communication">Abrir Comunicação</a>
+    <a class="secondary-button utility-heading-action" href="/communication"><span aria-hidden="true">↗</span> Abrir Comunicação</a>
+  </section>
+
+  <section class="utility-overview-grid" aria-label="Resumo do histórico">
+    <article><span class="utility-overview-icon" aria-hidden="true">≡</span><div><small>Resultados</small><strong>{{ activities|length }}</strong><p>nesta pesquisa</p></div></article>
+    <article><span class="utility-overview-icon" aria-hidden="true">◎</span><div><small>Colaboração</small><strong>{{ users|length }}</strong><p>{{ 'utilizador registado' if users|length == 1 else 'utilizadores registados' }}</p></div></article>
+    <article><span class="utility-overview-icon" aria-hidden="true">⌁</span><div><small>Filtros ativos</small><strong>{{ active_filter_count }}</strong><p>{{ 'critério aplicado' if active_filter_count == 1 else 'critérios aplicados' }}</p></div></article>
   </section>
 
   <section class="card activity-history-card utility-workspace" data-utility-workspace="activity">
-    <form class="activity-filters" method="get" action="/activity">
+    <header class="utility-card-header">
+      <div><p class="eyebrow">Auditoria</p><h2 id="activity-filters-title">Consultar alterações</h2></div>
+      <p>Os filtros completos são aplicados no servidor. A pesquisa rápida atua nos resultados apresentados.</p>
+    </header>
+    <form class="activity-filters utility-server-filters" method="get" action="/activity" aria-labelledby="activity-filters-title">
       <label>
         <span>Utilizador</span>
         <select name="user_id">
@@ -53,7 +64,7 @@
         <span>Até</span>
         <input type="date" name="date_to" value="{{ filters.date_to.isoformat() if filters.date_to else '' }}">
       </label>
-      <div class="activity-filter-actions">
+      <div class="activity-filter-actions utility-filter-actions">
         <button class="primary-button" type="submit">Aplicar filtros</button>
         <a class="text-button" href="/activity">Limpar</a>
       </div>
@@ -114,10 +125,10 @@
                 data-action="{{ activity.action_type }}"
                 data-description="{{ activity.description }}"
               >
-                <td data-label="Data">{{ activity.occurred_at.strftime('%d/%m/%Y · %H:%M') }}</td>
-                <td data-label="Utilizador"><strong>{{ activity.user_name }}</strong></td>
+                <td data-label="Data"><time datetime="{{ activity.occurred_at.isoformat() }}"><strong>{{ activity.occurred_at.strftime('%d/%m/%Y') }}</strong><small>{{ activity.occurred_at.strftime('%H:%M') }}</small></time></td>
+                <td data-label="Utilizador"><span class="activity-user"><span aria-hidden="true">{{ activity.user_name[:1] }}</span><strong>{{ activity.user_name }}</strong></span></td>
                 <td data-label="Módulo"><span class="activity-module">{{ activity.module|replace('-', ' ') }}</span></td>
-                <td data-label="Ação">{{ activity.action_type }}</td>
+                <td data-label="Ação"><span class="activity-action">{{ activity.action_type }}</span></td>
                 <td data-label="Descrição">{{ activity.description }}</td>
               </tr>
             {% endfor %}

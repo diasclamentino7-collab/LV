@@ -278,3 +278,431 @@
 
 html[data-motion-effective=none] .form-field { animation: none; }
 html[data-motion-effective=none] .form-save-status[data-state=saving] .form-status-dot { animation: none; }
+
+/* Enterprise form layer: consistent hierarchy, readable density and safe actions. */
+.form-workspace-page {
+  --form-ink: #443b3d;
+  max-width: 1260px;
+}
+
+.form-workspace-intro {
+  gap: 28px;
+  align-items: flex-end;
+  margin-bottom: 25px;
+}
+
+.form-intro-copy {
+  max-width: 730px;
+}
+
+.form-context-line {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.form-context-line .eyebrow {
+  margin: 0;
+}
+
+.form-context-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--line));
+  border-radius: 9px;
+  color: #9d536e;
+  background: color-mix(in srgb, var(--primary-soft) 66%, #fff);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 12px;
+}
+
+.form-back-link {
+  min-height: 32px;
+  margin-bottom: 13px;
+  padding: 5px 8px 5px 2px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.form-back-link:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 26%, transparent);
+  outline-offset: 2px;
+}
+
+.form-updated-card {
+  min-width: 260px;
+  padding: 14px 16px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .86);
+  box-shadow: 0 12px 35px rgb(65 43 50 / 6%);
+}
+
+.form-updated-card small {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.form-updated-card strong {
+  font-size: 11px;
+}
+
+.form-workspace-alert {
+  border-radius: 13px;
+}
+
+.form-command-bar {
+  top: 10px;
+  grid-template-columns: minmax(220px, 1fr) minmax(160px, .55fr) auto;
+  min-height: 76px;
+  padding: 12px 14px 12px 18px;
+  border-radius: 17px;
+  background: rgba(255, 253, 252, .94);
+  box-shadow: 0 14px 42px rgb(67 45 52 / 10%);
+}
+
+.form-save-status strong {
+  font-size: 12px;
+}
+
+.form-save-status small {
+  font-size: 9px;
+}
+
+.form-progress-compact > span {
+  font-size: 9px;
+}
+
+.form-progress-compact strong {
+  font-size: 11px;
+}
+
+.form-cancel-button {
+  min-height: 44px;
+  padding-inline: 14px;
+  font-size: 11px;
+}
+
+.form-save-button {
+  min-height: 45px;
+  padding-inline: 18px;
+  font-size: 11px;
+}
+
+.form-workspace[aria-busy="true"] .form-save-button {
+  cursor: progress;
+  opacity: .78;
+  pointer-events: none;
+}
+
+.form-workspace-layout {
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 20px;
+}
+
+.form-fields-card,
+.form-guidance-card,
+.form-footer-actions {
+  overflow: clip;
+  border-color: color-mix(in srgb, var(--line) 88%, #fff);
+  border-radius: 19px;
+  background: rgba(255, 255, 255, .86);
+  box-shadow: 0 17px 50px rgb(62 40 48 / 6%);
+}
+
+.form-fields-card {
+  padding: clamp(23px, 3vw, 36px);
+}
+
+.form-card-heading {
+  margin-bottom: 29px;
+  padding-bottom: 21px;
+}
+
+.form-card-heading h2 {
+  font-size: 18px;
+}
+
+.form-card-heading p:not(.eyebrow) {
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.form-field-count {
+  padding: 8px 11px;
+  font-size: 9px;
+}
+
+.form-field-grid {
+  gap: 22px 19px;
+}
+
+.form-field {
+  animation-duration: 160ms;
+  animation-delay: 0s;
+}
+
+.form-field-label {
+  min-height: 22px;
+  margin-bottom: 8px;
+  color: #554b4d;
+  font-size: 12px;
+}
+
+.form-field-label small {
+  font-size: 9px;
+}
+
+.form-field :where(input, select, textarea) {
+  min-height: 49px;
+  border-color: #e1d8d6;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgb(66 43 51 / 2%);
+}
+
+.form-field textarea {
+  min-height: 116px;
+  line-height: 1.6;
+}
+
+.form-field :where(input, select, textarea):focus {
+  border-color: #bf718d;
+  box-shadow: 0 0 0 4px rgba(216, 139, 167, .15), 0 9px 24px rgba(93, 59, 71, .05);
+}
+
+.form-field-hint,
+.form-field-error,
+.form-character-count {
+  min-height: 14px;
+  margin-top: 6px;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.form-character-count {
+  justify-self: end;
+  margin-top: -20px;
+  color: #aaa09f;
+  font-variant-numeric: tabular-nums;
+}
+
+.form-field.is-invalid .form-character-count {
+  color: #af6579;
+}
+
+.form-input-affix > span {
+  left: 14px;
+  font-size: 12px;
+}
+
+.form-input-affix input {
+  padding-left: 43px;
+}
+
+.form-related-empty {
+  min-height: 65px;
+  padding: 10px 11px 10px 13px;
+  border-radius: 12px;
+}
+
+.form-related-empty p,
+.form-related-empty .secondary-button {
+  font-size: 10px;
+}
+
+.form-guidance-card {
+  top: 107px;
+  gap: 19px;
+  padding: 29px 24px 23px;
+}
+
+.form-completion-ring {
+  width: 98px;
+  height: 98px;
+}
+
+.form-completion-ring::before {
+  width: 76px;
+  height: 76px;
+}
+
+.form-completion-ring strong {
+  font-size: 20px;
+}
+
+.form-guidance-card h2 {
+  font-size: 21px;
+}
+
+.form-guidance-card > div:nth-child(2) > p:last-child {
+  font-size: 10px;
+}
+
+.form-shortcuts li {
+  font-size: 10px;
+}
+
+.form-database-note {
+  padding: 13px;
+}
+
+.form-database-note p {
+  font-size: 9px;
+}
+
+.form-database-note strong {
+  font-size: 10px;
+}
+
+.form-created-note {
+  font-size: 9px;
+}
+
+.form-footer-actions {
+  margin-top: 20px;
+  padding: 19px 22px;
+}
+
+.form-footer-actions strong {
+  font-size: 11px;
+}
+
+.form-footer-actions small {
+  font-size: 9px;
+}
+
+.form-footer-actions .form-save-button {
+  min-width: 158px;
+}
+
+.form-save-button:focus-visible,
+.form-cancel-button:focus-visible,
+.form-field :where(input, select, textarea):focus-visible {
+  outline: none;
+}
+
+@media (max-width: 1020px) {
+  .form-workspace-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .form-guidance-card {
+    position: static;
+    grid-template-columns: 98px minmax(0, 1fr);
+    justify-items: start;
+    text-align: left;
+  }
+}
+
+@media (max-width: 760px) {
+  .form-workspace-intro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .form-updated-card {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .form-command-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .form-command-actions .form-cancel-button {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .form-workspace-page {
+    margin-inline: 0;
+  }
+
+  .form-workspace-intro h1 {
+    font-size: clamp(29px, 9vw, 35px);
+  }
+
+  .form-command-bar {
+    top: 7px;
+    margin-inline: -5px;
+    padding: 10px 10px 9px 13px;
+    border-radius: 15px;
+  }
+
+  .form-save-status small {
+    max-width: 150px;
+  }
+
+  .form-save-button {
+    min-height: 43px;
+    padding-inline: 14px;
+  }
+
+  .form-fields-card {
+    padding: 21px 16px;
+    border-radius: 16px;
+  }
+
+  .form-field-grid {
+    gap: 16px;
+  }
+
+  .form-field :where(input, select, textarea) {
+    min-height: 50px;
+    font-size: 16px;
+  }
+
+  .form-field textarea {
+    min-height: 122px;
+  }
+
+  .form-guidance-card {
+    grid-template-columns: 70px 1fr;
+    padding: 21px 17px;
+  }
+
+  .form-completion-ring {
+    width: 70px;
+    height: 70px;
+  }
+
+  .form-completion-ring::before {
+    width: 54px;
+    height: 54px;
+  }
+
+  .form-completion-ring strong {
+    font-size: 15px;
+  }
+
+  .form-footer-actions {
+    padding: 17px;
+    padding-bottom: max(17px, env(safe-area-inset-bottom));
+  }
+
+  .form-footer-actions > div:first-child {
+    align-items: flex-start;
+  }
+
+  .form-footer-actions > div:last-child {
+    grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-field,
+  .form-field :where(input, select, textarea),
+  .form-command-bar {
+    scroll-behavior: auto;
+    animation: none;
+    transition-duration: .01ms;
+  }
+}

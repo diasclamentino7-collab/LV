@@ -8,32 +8,49 @@
 {% block content %}
 <div class="module-workspace-page" data-module-workspace data-list-complete="{{ 'false' if search else 'true' }}" data-reset-url="/{{ module.slug }}{% if show_archived %}?archived=true{% endif %}">
   <section class="page-intro workspace-intro">
-    <div><p class="eyebrow">Gestão do casamento</p><h1>{{ module.title }}{% if show_archived %} <span>eliminados</span>{% endif %}</h1><p class="intro-copy">{{ module.description }}</p></div>
+    <div class="workspace-intro-copy">
+      <div class="workspace-context">
+        <span class="workspace-context-mark" aria-hidden="true">{{ module.title[:1] }}</span>
+        <p class="eyebrow">Planeamento · {{ 'Arquivo recuperável' if show_archived else 'Área de trabalho' }}</p>
+      </div>
+      <h1>{{ module.title }}{% if show_archived %} <span class="workspace-title-suffix">eliminados</span>{% endif %}</h1>
+      <p class="intro-copy">{{ module.description }}</p>
+      <div class="workspace-intro-meta" aria-label="Resumo da lista">
+        <span><strong>{{ records|length }}</strong> {{ 'resultados' if records|length != 1 else 'resultado' }}</span>
+        <span class="workspace-meta-divider" aria-hidden="true"></span>
+        <span>{{ 'Vista de arquivo' if show_archived else 'Dados guardados na base de dados' }}</span>
+      </div>
+    </div>
     <div class="page-actions module-page-actions">
-      <a class="secondary-button" href="/exports/{{ module.slug }}.pdf?q={{ search|urlencode }}&archived={{ 'true' if show_archived else 'false' }}" download data-export>Exportar PDF</a>
-      <a class="secondary-button" href="/{{ module.slug }}?archived={{ 'false' if show_archived else 'true' }}">{{ 'Ver ativos' if show_archived else 'Ver eliminados' }}</a>
-      {% if show_archived %}<a class="secondary-button" href="/deleted">Todos os eliminados</a>{% else %}<a class="primary-button" href="/{{ module.slug }}/new">+ Novo</a>{% endif %}
+      <a class="secondary-button workspace-action" href="/exports/{{ module.slug }}.pdf?q={{ search|urlencode }}&archived={{ 'true' if show_archived else 'false' }}" download data-export><span aria-hidden="true">↓</span> Exportar PDF</a>
+      <a class="secondary-button workspace-action" href="/{{ module.slug }}?archived={{ 'false' if show_archived else 'true' }}"><span aria-hidden="true">{{ '←' if show_archived else '⌁' }}</span> {{ 'Ver ativos' if show_archived else 'Ver eliminados' }}</a>
+      {% if show_archived %}<a class="secondary-button workspace-action" href="/deleted"><span aria-hidden="true">▦</span> Todos os eliminados</a>{% else %}<a class="primary-button workspace-primary-action" href="/{{ module.slug }}/new"><span aria-hidden="true">+</span> Novo registo</a>{% endif %}
     </div>
   </section>
   {% if module.slug in ['kingdom-hall', 'reception'] and ui_settings is defined %}
     {% set venue_name = ui_settings.ceremony_venue if module.slug == 'kingdom-hall' else ui_settings.reception_venue %}
-    <section class="venue-summary" aria-label="Local principal" data-motion-card><span aria-hidden="true">{{ '♡' if module.slug == 'kingdom-hall' else '✧' }}</span><div><small>Local principal</small><strong>{{ venue_name or 'Ainda por definir' }}</strong><p>{{ ui_settings.wedding_city or 'Zona por definir' }} · usem a lista para guardar contactos, visitas e decisões.</p></div><a class="secondary-button" href="/settings#event">Alterar local</a></section>
+    <section class="venue-summary workspace-venue-summary" aria-label="Local principal" data-motion-card><span class="workspace-venue-icon" aria-hidden="true">{{ '♡' if module.slug == 'kingdom-hall' else '✧' }}</span><div><small>Local principal</small><strong>{{ venue_name or 'Ainda por definir' }}</strong><p>{{ ui_settings.wedding_city or 'Zona por definir' }} · guardem aqui contactos, visitas e decisões.</p></div><a class="secondary-button" href="/settings#event">Gerir local</a></section>
   {% endif %}
-  {% if message %}<div class="success-banner" role="status">{% if message == 'created' %}Registo criado com sucesso.{% elif message == 'updated' %}Alterações guardadas.{% elif message == 'restored' %}Registo recuperado com sucesso.{% elif message == 'permanently_deleted' %}Registo removido definitivamente da interface. A cópia técnica continua preservada.{% else %}Registo eliminado da lista. Os dados continuam preservados.{% endif %}</div>{% endif %}
-  {% if error %}<div class="form-error" role="alert">{% if error == 'confirmation' %}Confirmação inválida. Escreva APAGAR exatamente como indicado.{% elif error == 'not_archived' %}Só é possível apagar definitivamente um registo que já esteja nos eliminados.{% else %}A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.{% endif %}</div>{% endif %}
+  {% if message %}<div class="workspace-feedback success-banner" role="status"><span class="workspace-feedback-icon" aria-hidden="true">✓</span><div><strong>Operação concluída</strong><p>{% if message == 'created' %}Registo criado com sucesso.{% elif message == 'updated' %}Alterações guardadas.{% elif message == 'restored' %}Registo recuperado com sucesso.{% elif message == 'permanently_deleted' %}Registo removido definitivamente da interface. A cópia técnica continua preservada.{% else %}Registo eliminado da lista. Os dados continuam preservados.{% endif %}</p></div></div>{% endif %}
+  {% if error %}<div class="workspace-feedback form-error" role="alert"><span class="workspace-feedback-icon" aria-hidden="true">!</span><div><strong>Não foi possível concluir</strong><p>{% if error == 'confirmation' %}Confirmação inválida. Escreva APAGAR exatamente como indicado.{% elif error == 'not_archived' %}Só é possível apagar definitivamente um registo que já esteja nos eliminados.{% else %}A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.{% endif %}</p></div></div>{% endif %}
   <section class="card module-workspace-card" aria-labelledby="module-workspace-title">
-    <h2 class="visually-hidden" id="module-workspace-title">Lista de {{ module.title|lower }}</h2>
+    <header class="module-card-header">
+      <div><p class="eyebrow">{{ 'Arquivo' if show_archived else 'Registos ativos' }}</p><h2 id="module-workspace-title">{{ 'Itens eliminados' if show_archived else 'Lista de ' ~ module.title|lower }}</h2></div>
+      <p>Pesquisem, ordenem e abram qualquer registo sem sair do fluxo.</p>
+    </header>
     <div class="module-toolbar">
       <form class="module-search" method="get" action="/{{ module.slug }}" role="search" data-module-search-form>
         {% if show_archived %}<input type="hidden" name="archived" value="true">{% endif %}
-        <span aria-hidden="true">⌕</span>
-        <label class="visually-hidden" for="module-search-{{ module.slug }}">Pesquisar {{ module.title|lower }}</label>
-        <input id="module-search-{{ module.slug }}" name="q" type="search" value="{{ search }}" maxlength="100" placeholder="Pesquisar em {{ module.title|lower }}…" autocomplete="off" data-module-search-input>
-        <button class="module-search-clear" type="button" data-module-search-clear hidden>Limpar</button>
+        <label class="module-control-label" for="module-search-{{ module.slug }}">Pesquisar</label>
+        <div class="module-search-field"><span aria-hidden="true">⌕</span>
+        <input id="module-search-{{ module.slug }}" name="q" type="search" value="{{ search }}" maxlength="100" placeholder="Nome, estado, categoria ou detalhe…" autocomplete="off" enterkeyhint="search" data-module-search-input>
+        <button class="module-search-clear" type="button" data-module-search-clear hidden>Limpar</button></div>
         <button class="secondary-button module-search-submit" type="submit">Pesquisar</button>
       </form>
+      <label class="module-filter-control" data-status-filter-control hidden><span class="module-control-label">Estado</span><select data-module-status-filter disabled><option value="">Todos os estados</option></select></label>
+      <label class="module-filter-control module-sort-control" data-sort-select-control hidden><span class="module-control-label">Ordenar</span><select data-module-sort-select disabled><option value="updated:date:desc">Atualizados recentemente</option><option value="updated:date:asc">Atualizados há mais tempo</option><option value="name:text:asc">Nome A–Z</option><option value="name:text:desc">Nome Z–A</option><option value="status:text:asc">Estado A–Z</option><option value="value:number:desc">Maior valor primeiro</option></select></label>
       <div class="module-view-controls" data-density-controls hidden>
-        <span>Vista</span>
+        <span class="module-control-label">Densidade</span>
         <div role="group" aria-label="Densidade da lista">
           <button type="button" data-density="comfortable" aria-pressed="true" title="Vista confortável">☰</button>
           <button type="button" data-density="compact" aria-pressed="false" title="Vista compacta">≡</button>
@@ -42,8 +59,8 @@
     </div>
     <div class="module-list-summary" aria-live="polite" aria-atomic="true">
       <p><strong data-visible-count>{{ records|length }}</strong> <span data-count-label>{{ 'resultado nesta pesquisa' if search and records|length == 1 else 'resultados nesta pesquisa' if search else 'registo' if records|length == 1 else 'registos' }}</span></p>
-      <div class="module-selection-summary" data-selection-summary hidden><strong data-selected-count>0</strong> selecionados <button type="button" data-clear-selection>Limpar seleção</button></div>
-      {% if not search %}<small>Pesquisa instantânea ativa <kbd>/</kbd></small>{% endif %}
+      <div class="module-selection-summary" data-selection-summary hidden><span><strong data-selected-count>0</strong> selecionados</span>{% if not show_archived %}<button type="button" data-open-selected>Editar primeiro</button>{% endif %}<button type="button" data-clear-selection>Limpar seleção</button></div>
+      <small><kbd>/</kbd> pesquisar <span aria-hidden="true">·</span> <kbd>Enter</kbd> editar</small>
     </div>
     {% if records %}
     <div class="module-table" role="table" aria-label="{{ module.title }}" aria-rowcount="{{ records|length + 1 }}">
@@ -60,7 +77,7 @@
         {% set record_name = record_labels[record.id] %}
         {% set record_status = record.status|default('', true) %}
         {% set record_type = record.vendor_type|default('', true) %}
-        <article class="module-table-row" role="row" tabindex="0" data-module-row
+        <article class="module-table-row" role="row" tabindex="0" aria-label="{{ record_name }}" data-module-row data-record-href="{% if not show_archived %}/{{ module.slug }}/{{ record.id }}/edit{% endif %}"
           data-search="{{ record_name }} {{ record.description|default('', true) }} {{ record.notes|default('', true) }} {{ record_status }} {{ record.category|default('', true) }} {{ record.priority|default('', true) }} {{ record.responsible|default('', true) }} {{ record.company|default('', true) }} {{ record_type }} {{ record.reference|default('', true) }}"
           data-sort-name="{{ record_name }}"
           data-sort-status="{{ record_status or record_type }}"
@@ -101,11 +118,11 @@
         {% endfor %}
       </div>
     </div>
-    <div class="module-filter-empty" data-filter-empty hidden><span aria-hidden="true">⌕</span><h3>Nenhum resultado nesta lista</h3><p>Tentem pesquisar por outro nome, estado ou detalhe.</p><button class="secondary-button" type="button" data-filter-empty-clear>Limpar pesquisa</button></div>
+    <div class="module-filter-empty" data-filter-empty hidden><span aria-hidden="true">⌕</span><h3>Nenhum resultado nesta vista</h3><p>Alterem a pesquisa ou o filtro de estado para voltar a ver registos.</p><button class="secondary-button" type="button" data-filter-empty-clear>Limpar filtros</button></div>
     {% else %}
     <div class="empty-state module-empty-state"><span class="empty-icon">✦</span>
       {% if search %}<h3>Não encontrámos registos.</h3><p>Limpem a pesquisa para voltar à lista completa.</p><a class="secondary-button" href="/{{ module.slug }}{% if show_archived %}?archived=true{% endif %}">Limpar pesquisa</a>
-      {% else %}<h3>Ainda não há registos.</h3><p>Adicionem o primeiro item; ficará guardado imediatamente na base de dados.</p>{% if not show_archived %}<a class="primary-button" href="/{{ module.slug }}/new">Criar primeiro registo</a>{% endif %}{% endif %}
+      {% else %}<h3>{{ 'O arquivo está vazio.' if show_archived else 'Ainda não há registos.' }}</h3><p>{{ 'Os itens eliminados aparecerão aqui e continuarão recuperáveis.' if show_archived else 'Criem o primeiro item; ficará imediatamente disponível para os dois utilizadores.' }}</p>{% if not show_archived %}<a class="primary-button" href="/{{ module.slug }}/new">Criar primeiro registo</a>{% endif %}{% endif %}
     </div>
     {% endif %}
   </section>

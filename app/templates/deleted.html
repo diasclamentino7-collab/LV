@@ -6,20 +6,26 @@
 <link rel="stylesheet" href="{{ url_for('static', path='css/utility-workspaces.css') }}">
 {% endblock %}
 {% block content %}
-<section class="page-intro" data-motion-list>
+<section class="page-intro utility-page-intro" data-motion-list>
   <div>
-    <p class="eyebrow">Segurança dos dados</p>
+    <div class="utility-context"><span aria-hidden="true">⌁</span><p class="eyebrow">Segurança dos dados</p></div>
     <h1>Todos os eliminados</h1>
     <p class="intro-copy">Registos retirados das listas, organizados num único local para recuperar ou remover definitivamente da interface.</p>
   </div>
   <div class="page-actions">
-    <a class="secondary-button" href="/exports/all.pdf" download data-export>Exportar relatório PDF</a>
-    <a class="secondary-button" href="/dashboard">Voltar ao Dashboard</a>
+    <a class="secondary-button utility-heading-action" href="/exports/all.pdf" download data-export><span aria-hidden="true">↓</span> Exportar relatório PDF</a>
+    <a class="secondary-button utility-heading-action" href="/dashboard"><span aria-hidden="true">←</span> Voltar ao Dashboard</a>
   </div>
 </section>
 
+<section class="utility-overview-grid utility-deleted-overview" aria-label="Resumo dos eliminados">
+  <article><span class="utility-overview-icon" aria-hidden="true">▦</span><div><small>Itens no arquivo</small><strong>{{ records|length }}</strong><p>{{ 'resultado carregado' if records|length == 1 else 'resultados carregados' }}</p></div></article>
+  <article><span class="utility-overview-icon is-safe" aria-hidden="true">✓</span><div><small>Recuperação</small><strong>Disponível</strong><p>sem perda do registo</p></div></article>
+  <article><span class="utility-overview-icon is-warning" aria-hidden="true">!</span><div><small>Remoção final</small><strong>Protegida</strong><p>exige confirmação escrita</p></div></article>
+</section>
+
 {% if message %}
-<div class="success-banner">
+<div class="success-banner utility-feedback" role="status">
   {% if message == 'restored' %}Registo recuperado com sucesso.
   {% elif message == 'permanently_deleted' %}Registo removido definitivamente da interface. A cópia técnica continua preservada.
   {% endif %}
@@ -34,10 +40,16 @@
 </div>
 {% endif %}
 
+<section class="utility-safety-note" aria-label="Proteção do arquivo"><span aria-hidden="true">i</span><div><strong>Arquivo recuperável</strong><p>Recuperar devolve o item à lista original. A remoção definitiva da interface exige sempre a confirmação APAGAR.</p></div></section>
+
 <section class="card module-records utility-workspace" data-utility-workspace="deleted">
-  <form class="search-bar utility-server-search" method="get">
-    <label class="sr-only" for="deleted-search">Pesquisar em todos os eliminados</label>
-    <input id="deleted-search" name="q" value="{{ search }}" type="search" inputmode="search" autocomplete="off" placeholder="Pesquisar em todos os módulos" data-utility-search>
+  <header class="utility-card-header">
+    <div><p class="eyebrow">Arquivo central</p><h2 id="deleted-search-title">Localizar um registo</h2></div>
+    <p>Pesquisem em todos os módulos e confirmem o item antes de executar qualquer ação.</p>
+  </header>
+  <form class="search-bar utility-server-search" method="get" aria-labelledby="deleted-search-title">
+    <label for="deleted-search">Pesquisar nos eliminados</label>
+    <span class="utility-server-search-field"><span aria-hidden="true">⌕</span><input id="deleted-search" name="q" value="{{ search }}" type="search" inputmode="search" autocomplete="off" enterkeyhint="search" placeholder="Nome ou módulo…" data-utility-search></span>
     <button class="secondary-button">Pesquisar</button>
     {% if search %}<a class="text-button" href="/deleted">Limpar</a>{% endif %}
   </form>
@@ -70,10 +82,11 @@
       data-module="{{ record.module_title }}"
       data-timestamp="{{ record.updated_at.isoformat() if record.updated_at else '' }}"
     >
-      <div>
+      <span class="deleted-record-icon" aria-hidden="true">{{ record.module_title[:1] }}</span>
+      <div class="deleted-record-copy">
         <p class="deleted-module">{{ record.module_title }}</p>
         <h2>{{ record.label }}</h2>
-        <p>Eliminado da lista · atualizado em {{ record.updated_at.strftime('%d/%m/%Y %H:%M') if record.updated_at else '—' }}</p>
+        <p>Eliminado da lista · {% if record.updated_at %}<time datetime="{{ record.updated_at.isoformat() }}">atualizado em {{ record.updated_at.strftime('%d/%m/%Y às %H:%M') }}</time>{% else %}sem data de atualização{% endif %}</p>
       </div>
       <div class="record-actions">
         <form method="post" action="/{{ record.module_slug }}/{{ record.id }}/restore?return_to=deleted">

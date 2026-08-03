@@ -40,62 +40,96 @@
     <script src="{{ url_for('static', path='js/command-palette.js') }}" defer></script>
     {% if theme is defined %}<style>:root{--primary:{{ theme.primary }};--primary-soft:{{ theme.secondary }};--accent:{{ theme.accent }};--background:{{ theme.background }};{% if theme.on_primary is defined %}--on-primary:{{ theme.on_primary }};{% endif %}}</style>{% endif %}
   </head>
-  <body>
+  <body data-section="{{ current_section|default('dashboard') }}">
+    {% macro nav_item(section, href, label, icon) -%}
+      <a class="nav-item {% if current_section == section %}is-active{% endif %}" href="{{ href }}"{% if current_section == section %} aria-current="page"{% endif %}>
+        <span class="nav-icon" aria-hidden="true">{{ icon }}</span><span>{{ label }}</span>
+      </a>
+    {%- endmacro %}
+    {% set current_user_name = request.session.get('user_name', 'Utilizador') %}
+    {% set current_user_initials = current_user_name[:2]|upper %}
+    {% set section_titles = {'dashboard': 'Visão geral', 'checklist': 'Checklist', 'timeline': 'Cronograma', 'budget': 'Orçamento', 'payments': 'Pagamentos', 'expenses': 'Despesas', 'vendors': 'Fornecedores', 'guests': 'Convidados', 'table-plan': 'Plano de Mesas', 'kingdom-hall': 'Salão do Reino', 'reception': 'Copo de Água', 'legal-process': 'Processo Legal', 'attire': 'Roupa', 'honeymoon': 'Lua de Mel', 'home': 'Casa', 'gifts': 'Presentes', 'documents': 'Documentos', 'moodboard': 'Moodboard', 'communication': 'Comunicação', 'activity': 'Atividade', 'deleted': 'Todos os eliminados', 'settings': 'Configurações'} %}
+
     <a class="skip-link" href="#main-content">Saltar para o conteúdo principal</a>
     <div class="app-shell">
       <aside class="sidebar" id="main-navigation" aria-label="Navegação principal" aria-hidden="false">
         <div class="sidebar-heading">
           <a class="brand" href="/dashboard" data-motion-home aria-label="{{ display_app_name|default('LV Wedding Planner') }}, regressar ao Dashboard">
-            {% if ui_settings is defined and ui_settings.logo_path %}<img class="brand-logo" src="{{ ui_settings.logo_path }}" alt="">{% else %}<span class="brand-mark">LV</span>{% endif %}
-            <span class="brand-name">{{ display_app_name|default('LV Wedding Planner') }}</span>
+            {% if ui_settings is defined and ui_settings.logo_path %}
+              <img class="brand-logo" src="{{ ui_settings.logo_path }}" alt="">
+            {% else %}
+              <span class="brand-mark">LV</span>
+            {% endif %}
+            <span class="brand-copy">
+              <strong class="brand-name">{{ display_app_name|default('LV Wedding Planner') }}</strong>
+              <small>O vosso casamento</small>
+            </span>
           </a>
-          <button class="sidebar-close" type="button" aria-label="Fechar menu" aria-controls="main-navigation">×</button>
+          <button class="sidebar-close" type="button" aria-label="Fechar menu" aria-controls="main-navigation">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+          </button>
         </div>
 
-        <nav class="nav-list">
-          <a class="nav-item {% if current_section == 'dashboard' %}is-active{% endif %}" href="/dashboard"><span class="nav-icon">⌂</span>Dashboard</a>
-          <p class="nav-label">Planeamento</p>
-          <a class="nav-item {% if current_section == 'checklist' %}is-active{% endif %}" href="/checklist"><span class="nav-icon">✓</span>Checklist</a>
-          <a class="nav-item {% if current_section == 'timeline' %}is-active{% endif %}" href="/timeline"><span class="nav-icon">◌</span>Cronograma</a>
-          <a class="nav-item {% if current_section == 'budget' %}is-active{% endif %}" href="/budget"><span class="nav-icon">◈</span>Orçamento</a>
-          <a class="nav-item {% if current_section == 'payments' %}is-active{% endif %}" href="/payments"><span class="nav-icon">€</span>Pagamentos</a>
-          <a class="nav-item {% if current_section == 'expenses' %}is-active{% endif %}" href="/expenses"><span class="nav-icon">−</span>Despesas</a>
-          <a class="nav-item {% if current_section == 'vendors' %}is-active{% endif %}" href="/vendors"><span class="nav-icon">✦</span>Fornecedores</a>
-          <a class="nav-item {% if current_section == 'guests' %}is-active{% endif %}" href="/guests"><span class="nav-icon">◫</span>Convidados</a>
-          <a class="nav-item {% if current_section == 'table-plan' %}is-active{% endif %}" href="/table-plan"><span class="nav-icon">⌘</span>Plano de Mesas</a>
-          <p class="nav-label">O grande dia</p>
-          <a class="nav-item {% if current_section == 'kingdom-hall' %}is-active{% endif %}" href="/kingdom-hall"><span class="nav-icon">♡</span>Salão do Reino · Cerimónia</a>
-          <a class="nav-item {% if current_section == 'reception' %}is-active{% endif %}" href="/reception"><span class="nav-icon">✧</span>Copo de Água · Festa</a>
-          <a class="nav-item {% if current_section == 'legal-process' %}is-active{% endif %}" href="/legal-process"><span class="nav-icon">§</span>Processo Legal</a>
-          <p class="nav-label">O vosso mundo</p>
-          <a class="nav-item {% if current_section == 'attire' %}is-active{% endif %}" href="/attire"><span class="nav-icon">◇</span>Roupa</a>
-          <a class="nav-item {% if current_section == 'honeymoon' %}is-active{% endif %}" href="/honeymoon"><span class="nav-icon">☼</span>Lua de Mel</a>
-          <a class="nav-item {% if current_section == 'home' %}is-active{% endif %}" href="/home"><span class="nav-icon">⌂</span>Casa</a>
-          <a class="nav-item {% if current_section == 'gifts' %}is-active{% endif %}" href="/gifts"><span class="nav-icon">♢</span>Presentes</a>
-          <a class="nav-item {% if current_section == 'documents' %}is-active{% endif %}" href="/documents"><span class="nav-icon">▤</span>Documentos</a>
-          <a class="nav-item {% if current_section == 'moodboard' %}is-active{% endif %}" href="/moodboard"><span class="nav-icon">✿</span>Moodboard</a>
-          <a class="nav-item {% if current_section == 'communication' %}is-active{% endif %}" href="/communication"><span class="nav-icon">✎</span>Comunicação</a>
-          <a class="nav-item {% if current_section == 'activity' %}is-active{% endif %}" href="/activity"><span class="nav-icon">◷</span>Atividade</a>
+        <nav class="nav-list" aria-label="Áreas da aplicação">
+          <section class="nav-group" aria-labelledby="nav-overview-label">
+            <h2 class="nav-label" id="nav-overview-label">Visão geral</h2>
+            {{ nav_item('dashboard', '/dashboard', 'Dashboard', '⌂') }}
+          </section>
+          <section class="nav-group" aria-labelledby="nav-planning-label">
+            <h2 class="nav-label" id="nav-planning-label">Planeamento</h2>
+            {{ nav_item('checklist', '/checklist', 'Checklist', '✓') }}
+            {{ nav_item('timeline', '/timeline', 'Cronograma', '◷') }}
+            {{ nav_item('budget', '/budget', 'Orçamento', '◇') }}
+            {{ nav_item('payments', '/payments', 'Pagamentos', '€') }}
+            {{ nav_item('expenses', '/expenses', 'Despesas', '−') }}
+            {{ nav_item('vendors', '/vendors', 'Fornecedores', '✦') }}
+            {{ nav_item('guests', '/guests', 'Convidados', '◫') }}
+            {{ nav_item('table-plan', '/table-plan', 'Plano de Mesas', '⌘') }}
+          </section>
+          <section class="nav-group" aria-labelledby="nav-wedding-label">
+            <h2 class="nav-label" id="nav-wedding-label">O grande dia</h2>
+            {{ nav_item('kingdom-hall', '/kingdom-hall', 'Salão do Reino', '♡') }}
+            {{ nav_item('reception', '/reception', 'Copo de Água', '✧') }}
+            {{ nav_item('legal-process', '/legal-process', 'Processo Legal', '§') }}
+          </section>
+          <section class="nav-group" aria-labelledby="nav-project-label">
+            <h2 class="nav-label" id="nav-project-label">O vosso projeto</h2>
+            {{ nav_item('attire', '/attire', 'Roupa', '◇') }}
+            {{ nav_item('honeymoon', '/honeymoon', 'Lua de Mel', '☼') }}
+            {{ nav_item('home', '/home', 'Casa', '⌂') }}
+            {{ nav_item('gifts', '/gifts', 'Presentes', '♢') }}
+            {{ nav_item('documents', '/documents', 'Documentos', '▤') }}
+            {{ nav_item('moodboard', '/moodboard', 'Moodboard', '✿') }}
+            {{ nav_item('communication', '/communication', 'Comunicação', '✎') }}
+            {{ nav_item('activity', '/activity', 'Atividade', '◌') }}
+          </section>
         </nav>
 
         <div class="sidebar-footer">
-          <div class="profile-card">
-            <span class="avatar">LV</span>
-            <span><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><small>Em sessão</small></span>
-            <a class="more" href="/settings" aria-label="Abrir Configurações" title="Configurações">•••</a>
-          </div>
+          <a href="/settings" aria-label="Abrir Configurações" class="profile-card" title="Configurações da aplicação">
+            <span class="avatar">{{ current_user_initials }}</span>
+            <span class="profile-copy"><strong>{{ current_user_name }}</strong><small>Conta e preferências</small></span>
+            <span class="profile-action" aria-hidden="true">⚙</span>
+          </a>
         </div>
       </aside>
-      <button class="sidebar-overlay" type="button" aria-label="Fechar navegação" tabindex="-1"></button>
+      <button class="sidebar-overlay" type="button" aria-label="Fechar navegação" aria-hidden="true" tabindex="-1"></button>
 
       <div class="main-frame">
         <header class="header">
-          <button class="menu-button" type="button" aria-label="Abrir menu" aria-controls="main-navigation" aria-expanded="false">☰</button>
-          {% set section_titles = {'dashboard': 'Visão geral', 'checklist': 'Checklist', 'timeline': 'Cronograma', 'budget': 'Orçamento', 'payments': 'Pagamentos', 'expenses': 'Despesas', 'vendors': 'Fornecedores', 'guests': 'Convidados', 'table-plan': 'Plano de Mesas', 'kingdom-hall': 'Salão do Reino', 'reception': 'Copo de Água', 'legal-process': 'Processo Legal', 'attire': 'Roupa', 'honeymoon': 'Lua de Mel', 'home': 'Casa', 'gifts': 'Presentes', 'documents': 'Documentos', 'moodboard': 'Moodboard', 'communication': 'Comunicação', 'activity': 'Atividade', 'deleted': 'Todos os eliminados', 'settings': 'Configurações'} %}
-          <div class="breadcrumb"><a href="/dashboard">LV</a><i>/</i><strong>{{ section_titles.get(current_section, 'Visão geral') }}</strong></div>
+          <div class="header-context">
+            <button class="menu-button" type="button" aria-label="Abrir menu" aria-controls="main-navigation" aria-expanded="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+            </button>
+            <nav class="breadcrumb" aria-label="Contexto da página">
+              <a href="/dashboard" aria-label="Dashboard"><span aria-hidden="true">⌂</span><span>Dashboard</span></a>
+              <span class="breadcrumb-separator" aria-hidden="true">/</span>
+              <strong aria-current="page">{{ section_titles.get(current_section, 'Visão geral') }}</strong>
+            </nav>
+          </div>
           <div class="header-actions">
             <button
-              class="icon-button command-palette-trigger"
+              class="icon-button command-palette-trigger header-search"
               type="button"
               data-motion-modal-open="command-palette"
               aria-haspopup="dialog"
@@ -103,9 +137,39 @@
               aria-keyshortcuts="Control+K Meta+K"
               aria-label="Pesquisar e abrir ações rápidas"
               title="Pesquisa rápida (Ctrl+K)"
-            ><span data-motion-icon aria-hidden="true">⌕</span><kbd aria-hidden="true">⌘K</kbd></button>
-            <button class="icon-button notification" type="button" data-motion-action="communication" data-communication-trigger aria-haspopup="dialog" aria-controls="communication-drawer" aria-label="Abrir centro de comunicação"><span data-motion-icon>✦</span></button>
-            <details class="account-menu"><summary class="header-avatar" aria-label="Menu de conta">{{ request.session.get('user_name', 'LV')[:2]|upper }}</summary><div><strong>{{ request.session.get('user_name', 'Utilizador') }}</strong><a href="/deleted">Todos os eliminados</a><a href="/account/password">Alterar password</a><form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Terminar sessão</button></form></div></details>
+            >
+              <span data-motion-icon aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 5 5"></path></svg>
+              </span>
+              <span class="header-search-label">Pesquisar áreas e ações</span>
+              <kbd aria-hidden="true">Ctrl K</kbd>
+            </button>
+            <button class="icon-button notification" type="button" data-motion-action="communication" data-communication-trigger aria-haspopup="dialog" aria-controls="communication-drawer" aria-label="Abrir centro de comunicação" title="Centro de comunicação">
+              <span data-motion-icon aria-hidden="true">✦</span>
+            </button>
+            <span class="header-divider" aria-hidden="true"></span>
+            <details class="account-menu">
+              <summary class="account-summary" aria-label="Abrir menu da conta de {{ current_user_name }}" aria-controls="account-menu-panel" aria-expanded="false">
+                <span class="header-avatar">{{ current_user_initials }}</span>
+                <span class="account-summary-copy"><small>Em sessão</small><strong>{{ current_user_name }}</strong></span>
+                <svg class="account-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+              </summary>
+              <div class="account-menu-panel" id="account-menu-panel">
+                <header class="account-menu-header">
+                  <span class="avatar">{{ current_user_initials }}</span>
+                  <span><small>Conta ativa</small><strong>{{ current_user_name }}</strong></span>
+                </header>
+                <nav aria-label="Gestão da conta">
+                  <a href="/settings"><span aria-hidden="true">⚙</span><span>Configurações</span></a>
+                  <a href="/account/password"><span aria-hidden="true">◇</span><span>Alterar password</span></a>
+                  <a href="/deleted"><span aria-hidden="true">⌫</span><span>Todos os eliminados</span></a>
+                </nav>
+                <form action="/logout" method="post">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit"><span aria-hidden="true">↗</span><span>Terminar sessão</span></button>
+                </form>
+              </div>
+            </details>
           </div>
         </header>
         <main class="content" id="main-content" tabindex="-1" data-motion-page>{% block content %}{% endblock %}</main>
@@ -113,114 +177,6 @@
     </div>
     {% include "_command_palette.html" %}
     {% include "_communication_drawer.html" %}
-    <script>
-      if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js");
-      const menuButton = document.querySelector(".menu-button");
-      const sidebar = document.querySelector(".sidebar");
-      const sidebarOverlay = document.querySelector(".sidebar-overlay");
-      const sidebarClose = document.querySelector(".sidebar-close");
-      const mobileNavigation = window.matchMedia("(max-width: 850px)");
-      const focusableSelector = [
-        "a[href]",
-        "button:not([disabled])",
-        "input:not([disabled])",
-        "select:not([disabled])",
-        "textarea:not([disabled])",
-        "summary",
-        "[tabindex]:not([tabindex='-1'])"
-      ].join(",");
-      let navigationReturnFocus = null;
-
-      const navigationIsOpen = () => document.body.classList.contains("navigation-open");
-      const setSidebarAvailability = available => {
-        if (!sidebar) return;
-        sidebar.toggleAttribute("inert", !available);
-        sidebar.setAttribute("aria-hidden", available ? "false" : "true");
-      };
-      const sidebarFocusableElements = () => sidebar
-        ? [...sidebar.querySelectorAll(focusableSelector)].filter(element => (
-            !element.hasAttribute("disabled") &&
-            element.getAttribute("aria-hidden") !== "true" &&
-            element.getClientRects().length > 0
-          ))
-        : [];
-      const closeNavigation = (restoreFocus = true) => {
-        if (!mobileNavigation.matches) return;
-        const wasOpen = navigationIsOpen();
-        document.body.classList.remove("navigation-open");
-        menuButton?.setAttribute("aria-expanded", "false");
-        setSidebarAvailability(false);
-        if (wasOpen && restoreFocus) {
-          const target = navigationReturnFocus instanceof HTMLElement
-            ? navigationReturnFocus
-            : menuButton;
-          target?.focus();
-        }
-        navigationReturnFocus = null;
-      };
-      const openNavigation = () => {
-        if (!mobileNavigation.matches || !sidebar) return;
-        navigationReturnFocus = document.activeElement;
-        setSidebarAvailability(true);
-        document.body.classList.add("navigation-open");
-        menuButton?.setAttribute("aria-expanded", "true");
-        window.requestAnimationFrame(() => (sidebarClose || sidebarFocusableElements()[0])?.focus());
-      };
-      const syncNavigationLayout = () => {
-        const focusedInsideSidebar = sidebar?.contains(document.activeElement);
-        document.body.classList.remove("navigation-open");
-        menuButton?.setAttribute("aria-expanded", "false");
-        setSidebarAvailability(!mobileNavigation.matches);
-        if (focusedInsideSidebar) {
-          if (mobileNavigation.matches) menuButton?.focus();
-          else sidebar?.querySelector(".nav-item.is-active")?.focus();
-        }
-        navigationReturnFocus = null;
-      };
-
-      sidebar?.querySelector(".nav-item.is-active")?.setAttribute("aria-current", "page");
-      menuButton?.addEventListener("click", () => {
-        if (navigationIsOpen()) closeNavigation();
-        else openNavigation();
-      });
-      sidebarClose?.addEventListener("click", () => closeNavigation());
-      sidebarOverlay?.addEventListener("click", () => closeNavigation());
-      sidebar?.querySelectorAll("a").forEach(link => (
-        link.addEventListener("click", () => closeNavigation(false))
-      ));
-      document.addEventListener("keydown", event => {
-        if (!mobileNavigation.matches || !navigationIsOpen()) return;
-        if (event.key === "Escape") {
-          event.preventDefault();
-          closeNavigation();
-          return;
-        }
-        if (event.key !== "Tab") return;
-        const focusable = sidebarFocusableElements();
-        if (!focusable.length) {
-          event.preventDefault();
-          return;
-        }
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && (document.activeElement === first || !sidebar?.contains(document.activeElement))) {
-          event.preventDefault();
-          last.focus();
-        } else if (
-          !event.shiftKey &&
-          (document.activeElement === last || !sidebar?.contains(document.activeElement))
-        ) {
-          event.preventDefault();
-          first.focus();
-        }
-      });
-      if (typeof mobileNavigation.addEventListener === "function") {
-        mobileNavigation.addEventListener("change", syncNavigationLayout);
-      } else {
-        mobileNavigation.addListener(syncNavigationLayout);
-      }
-      syncNavigationLayout();
-    </script>
     {% block scripts %}{% endblock %}
   </body>
 </html>

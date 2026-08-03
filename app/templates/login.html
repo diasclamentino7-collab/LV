@@ -1,35 +1,42 @@
 {% extends "auth_base.html" %}
 {% block title %}Entrar · {{ display_app_name|default(app_name) }}{% endblock %}
 {% block content %}
-<span class="brand-mark">LV</span>
-<p class="eyebrow">Bem-vindos de volta</p>
-<h1>Entrar no vosso espaço.</h1>
+<header class="auth-card-heading">
+  <span class="auth-mobile-mark" aria-hidden="true">LV</span>
+  <p class="eyebrow">Bem-vindos de volta</p>
+  <h1>Entrem no vosso espaço.</h1>
+  <p class="auth-lead">Tudo o que estão a planear continua exatamente onde ficou.</p>
+</header>
 {% if request.query_params.get('password') == 'changed' %}
-<p class="form-success" role="status">Password alterada. Iniciem sessão novamente.</p>
+<p class="form-success auth-message" role="status"><span aria-hidden="true">✓</span><span><strong>Password alterada.</strong> Iniciem sessão novamente.</span></p>
 {% endif %}
 {% if request.query_params.get('error') %}
-<p class="form-error" role="alert">
-  {% if request.query_params.get('error') == 'csrf' %}
-    A sessão de segurança expirou. Recarreguem a página.
+<p class="form-error auth-message" role="alert">
+  <span aria-hidden="true">!</span><span>{% if request.query_params.get('error') == 'csrf' %}
+    <strong>A sessão de segurança expirou.</strong> Recarreguem a página.
   {% elif request.query_params.get('error') == 'locked' %}
-    Demasiadas tentativas. A conta fica protegida durante 15 minutos.
+    <strong>Conta temporariamente protegida.</strong> Tentem novamente dentro de 15 minutos.
   {% else %}
-    Password incorreta. Tentem novamente.
-  {% endif %}
+    <strong>Não foi possível entrar.</strong> Confirmem a password e tentem novamente.
+  {% endif %}</span>
 </p>
 {% endif %}
-<form method="post" class="form-grid">
+<form method="post" class="form-grid auth-form" data-auth-form>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>
-    Utilizador
+    <span>Quem está a entrar?</span>
     <select name="user_id">
       {% for user in users %}<option value="{{ user.id }}">{{ user.name }}</option>{% endfor %}
     </select>
   </label>
   <label>
-    Password
-    <input name="password" type="password" maxlength="256" autocomplete="current-password" required autofocus>
+    <span>Password</span>
+    <span class="password-control">
+      <input name="password" type="password" maxlength="256" autocomplete="current-password" required autofocus data-password-input>
+      <button type="button" data-password-toggle aria-label="Mostrar password" aria-pressed="false">Mostrar</button>
+    </span>
   </label>
-  <button class="primary-button" type="submit">Entrar</button>
+  <button class="primary-button auth-submit" type="submit"><span data-submit-label>Entrar em segurança</span><i aria-hidden="true">→</i></button>
+  <p class="auth-form-note"><span aria-hidden="true">◈</span> Cada sessão pertence apenas ao utilizador selecionado.</p>
 </form>
 {% endblock %}

@@ -13,6 +13,11 @@
         Reúnam cores, ambientes e detalhes numa galeria organizada ou componham
         livremente a vossa Mesa de Inspiração.
       </p>
+      <div class="moodboard-hero-summary" aria-label="Resumo do moodboard">
+        <span><strong>{{ items|length }}</strong> visíveis</span>
+        <span><strong>{{ collections|length }}</strong> {{ "coleção" if collections|length == 1 else "coleções" }}</span>
+        {% if favorites %}<span class="is-highlighted">Só favoritos</span>{% endif %}
+      </div>
     </div>
     <a class="primary-button moodboard-add-button" href="/moodboard/new">
       <span aria-hidden="true">＋</span> Nova inspiração
@@ -41,6 +46,15 @@
   {% endif %}
 
   <form class="card moodboard-toolbar" method="get" aria-label="Pesquisar e filtrar inspirações">
+    <div class="moodboard-toolbar-heading">
+      <div>
+        <strong>Encontrar inspirações</strong>
+        <small>Pesquisem por título, notas, etiquetas ou coleção.</small>
+      </div>
+      {% if search or favorites or selected_collection_id or selected_sort != "custom" %}
+      <a href="/moodboard?view={{ selected_view }}">Limpar filtros</a>
+      {% endif %}
+    </div>
     <div class="moodboard-search">
       <label for="moodboard-search">Pesquisar</label>
       <div>
@@ -88,7 +102,7 @@
       Só favoritos
     </label>
     <input type="hidden" name="view" value="{{ selected_view }}">
-    <button class="secondary-button" type="submit">Aplicar</button>
+    <button class="secondary-button" type="submit">Aplicar filtros</button>
   </form>
 
   <div class="moodboard-view-bar">
@@ -104,7 +118,7 @@
         {% if selected_view == "table" %}aria-current="page"{% endif %}
       ><span aria-hidden="true">✦</span> Mesa de Inspiração</a>
     </div>
-    <p><strong>{{ items|length }}</strong> {{ "inspiração" if items|length == 1 else "inspirações" }}</p>
+    <p aria-live="polite"><strong>{{ items|length }}</strong> {{ "inspiração visível" if items|length == 1 else "inspirações visíveis" }}</p>
   </div>
 
   {% if items and selected_view == "gallery" %}
@@ -158,6 +172,7 @@
           <p class="moodboard-collection">{{ collection_names.get(item.collection_id, "Inspiração") }}</p>
           <h2>{{ item.title }}</h2>
           {% if item.tags %}<p class="moodboard-tags">{{ item.tags }}</p>{% endif %}
+          {% if item.notes %}<p class="moodboard-card-notes">{{ item.notes }}</p>{% endif %}
         </div>
         <div class="moodboard-actions">
           {% if selected_sort == "custom" %}
@@ -176,14 +191,14 @@
             </form>
           </div>
           {% endif %}
-          <a href="/moodboard/{{ item.id }}/edit">Editar</a>
+          <a class="moodboard-edit-action" href="/moodboard/{{ item.id }}/edit"><span aria-hidden="true">✎</span> Editar</a>
           <form
             method="post"
             action="/moodboard/{{ item.id }}/archive"
             onsubmit="return confirm('Retirar esta inspiração da galeria? O registo será preservado.')"
           >
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit">Retirar</button>
+            <button class="moodboard-remove-action" type="submit"><span aria-hidden="true">−</span> Retirar</button>
           </form>
         </div>
       </div>
@@ -211,7 +226,12 @@
         <button class="secondary-button" type="submit">Reorganizar mesa</button>
       </form>
     </div>
-    <div class="inspiration-table-scroll">
+    <div
+      class="inspiration-table-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="Mesa de Inspiração deslocável. Em ecrãs pequenos use os gestos ou as setas para percorrer a mesa."
+    >
       <div
         class="inspiration-table"
         id="inspiration-table"
@@ -301,7 +321,12 @@
         Adicionem a primeira imagem através de um URL público.
       {% endif %}
     </p>
-    <a class="primary-button" href="/moodboard/new">Adicionar inspiração</a>
+    <div class="moodboard-empty-actions">
+      {% if search or favorites or selected_collection_id %}
+      <a class="secondary-button" href="/moodboard?view={{ selected_view }}">Limpar filtros</a>
+      {% endif %}
+      <a class="primary-button" href="/moodboard/new">Adicionar inspiração</a>
+    </div>
   </section>
   {% endif %}
 
@@ -310,7 +335,14 @@
       <button class="moodboard-dialog-close" type="button" data-preview-close aria-label="Fechar pré-visualização">×</button>
       <button class="moodboard-dialog-nav is-previous" type="button" data-preview-previous aria-label="Inspiração anterior">‹</button>
       <figure>
-        <img data-preview-image src="" alt="">
+        <div class="moodboard-dialog-image">
+          <img data-preview-image src="" alt="">
+          <div class="moodboard-dialog-image-error" data-preview-image-error hidden>
+            <span aria-hidden="true">◇</span>
+            <strong>Imagem indisponível</strong>
+            <p>A referência continua guardada e pode ser editada.</p>
+          </div>
+        </div>
         <figcaption>
           <p class="moodboard-collection" data-preview-collection></p>
           <h2 id="moodboard-dialog-title" data-preview-title></h2>

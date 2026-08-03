@@ -1,64 +1,153 @@
 {% extends "base.html" %}
 {% from "_components.html" import card, progress %}
 
+{% set open_tasks = stats.tasks - stats.completed_tasks %}
+
 {% block title %}Visão geral · {{ display_app_name|default(app_name) }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/dashboard.css') }}">
+{% endblock %}
+
 {% block content %}
 <div
   class="dashboard-live"
   data-dashboard-live
   data-wedding-target="{{ countdown.date.isoformat() if countdown else '' }}"
 >
-  <section class="page-intro" data-motion-card>
-    <div><p class="eyebrow">O vosso dia, à vossa maneira</p><h1>Bom dia, {{ couple_names }} <span>♡</span></h1><p class="intro-copy">Tudo o que precisam para criar um casamento memorável, num só lugar.</p></div>
-    <a class="primary-button" href="/checklist/new">+ Adicionar ao plano</a>
+  <section class="dashboard-hero" data-motion-card>
+    <div class="dashboard-hero-copy">
+      <p class="dashboard-kicker"><span aria-hidden="true"></span> Centro de planeamento</p>
+      <h1>Bom dia, {{ couple_names }} <span aria-hidden="true">♡</span></h1>
+      <p>Uma visão clara do que está decidido, do que precisa de atenção e do que vem a seguir.</p>
+      <div class="dashboard-hero-meta" aria-label="Estado rápido do planeamento">
+        <span><i aria-hidden="true">✓</i> <strong data-live-key="completed_tasks" data-live-value="{{ stats.completed_tasks }}">{{ stats.completed_tasks }}</strong> tarefas concluídas</span>
+        <span><i aria-hidden="true">○</i> <strong data-live-key="open_tasks" data-live-value="{{ open_tasks if open_tasks > 0 else 0 }}">{{ open_tasks if open_tasks > 0 else 0 }}</strong> por concluir</span>
+        {% if countdown %}<span><i aria-hidden="true">◇</i> <time datetime="{{ countdown.date.isoformat() }}">{{ countdown.date.strftime('%d/%m/%Y') }}</time></span>{% else %}<a href="/settings#event"><i aria-hidden="true">◇</i> Definir data do casamento</a>{% endif %}
+      </div>
+    </div>
+    <div class="dashboard-hero-actions">
+      <a class="primary-button" href="/checklist/new"><span aria-hidden="true">＋</span> Nova tarefa</a>
+      <a class="secondary-button" href="/communication/new"><span aria-hidden="true">✦</span> Registar ideia</a>
+    </div>
+    <span class="dashboard-hero-signature" aria-hidden="true">LV</span>
   </section>
+
+  <nav class="dashboard-quickbar" aria-label="Ações rápidas" data-motion-list>
+    <div><p class="eyebrow">Ações rápidas</p><strong>Continuar a planear</strong></div>
+    <a href="/guests/new" data-motion-card><span class="blush" aria-hidden="true">＋</span><p><strong>Convidado</strong><small>Adicionar à lista</small></p><i aria-hidden="true">↗</i></a>
+    <a href="/expenses/new" data-motion-card><span class="gold" aria-hidden="true">€</span><p><strong>Despesa</strong><small>Registar valor</small></p><i aria-hidden="true">↗</i></a>
+    <a href="/communication/new" data-motion-card><span class="sand" aria-hidden="true">✎</span><p><strong>Nota ou ideia</strong><small>Guardar no centro</small></p><i aria-hidden="true">↗</i></a>
+    <a href="/documents/new" data-motion-card><span class="sage" aria-hidden="true">▤</span><p><strong>Documento</strong><small>Organizar ficheiro</small></p><i aria-hidden="true">↗</i></a>
+  </nav>
 
   {% if settings.dashboard_show_countdown %}
   <section class="countdown card" data-motion-card data-motion-tilt="2.4">
-    <div class="countdown-copy" data-motion-depth="front"><p class="eyebrow">O grande dia</p><h2 data-live-key="countdown_heading">{% if countdown and countdown.is_past %}O grande dia chegou.{% elif countdown %}Estamos quase lá.{% else %}Definam a data do casamento.{% endif %}</h2><p>{% if countdown %}<span data-live-key="countdown_date">{{ countdown.date.strftime('%d/%m/%Y · %H:%M') }}</span>{% else %}<a data-live-key="countdown_date" href="/settings#event">Definir data nas Configurações</a>{% endif %}</p></div>
-    <div class="countdown-numbers" data-motion-depth="front"><div><strong data-live-key="countdown_days" data-live-value="{{ countdown.days if countdown else '' }}" data-motion-number>{{ countdown.days if countdown else '—' }}</strong><span>dias</span></div><i></i><div><strong data-live-key="countdown_hours" data-live-value="{{ countdown.hours if countdown else '' }}" data-motion-number>{{ countdown.hours if countdown else '—' }}</strong><span>horas</span></div><i></i><div><strong data-live-key="countdown_minutes" data-live-value="{{ countdown.minutes if countdown else '' }}" data-motion-number>{{ countdown.minutes if countdown else '—' }}</strong><span>minutos</span></div><i></i><div><strong data-live-key="countdown_seconds" data-live-value="{{ countdown.seconds if countdown else '' }}" data-motion-number>{{ countdown.seconds if countdown else '—' }}</strong><span>segundos</span></div></div>
+    <div class="countdown-copy" data-motion-depth="front">
+      <p class="eyebrow">O grande dia</p>
+      <h2 data-live-key="countdown_heading">{% if countdown and countdown.is_past %}O grande dia chegou.{% elif countdown %}Estamos quase lá.{% else %}Definam a data do casamento.{% endif %}</h2>
+      <p>{% if countdown %}<time data-live-key="countdown_date" datetime="{{ countdown.date.isoformat() }}">{{ countdown.date.strftime('%d/%m/%Y · %H:%M') }}</time>{% else %}<a data-live-key="countdown_date" href="/settings#event">Definir data nas Configurações</a>{% endif %}</p>
+    </div>
+    <div class="countdown-numbers" data-motion-depth="front" aria-label="Tempo até ao casamento">
+      <div><strong data-live-key="countdown_days" data-live-value="{{ countdown.days if countdown else '' }}" data-motion-number>{{ countdown.days if countdown else '—' }}</strong><span>dias</span></div>
+      <i aria-hidden="true"></i>
+      <div><strong data-live-key="countdown_hours" data-live-value="{{ countdown.hours if countdown else '' }}" data-motion-number>{{ countdown.hours if countdown else '—' }}</strong><span>horas</span></div>
+      <i aria-hidden="true"></i>
+      <div><strong data-live-key="countdown_minutes" data-live-value="{{ countdown.minutes if countdown else '' }}" data-motion-number>{{ countdown.minutes if countdown else '—' }}</strong><span>minutos</span></div>
+      <i aria-hidden="true"></i>
+      <div><strong data-live-key="countdown_seconds" data-live-value="{{ countdown.seconds if countdown else '' }}" data-motion-number>{{ countdown.seconds if countdown else '—' }}</strong><span>segundos</span></div>
+    </div>
+    <a class="countdown-settings" href="/settings#event">Alterar data <span aria-hidden="true">→</span></a>
     <span class="flower-mark" aria-hidden="true" data-motion-parallax data-motion-range="7" data-motion-depth="back">✽</span>
   </section>
   {% endif %}
 
   <section class="metric-grid{% if not settings.dashboard_show_finance %} is-two{% endif %}" aria-label="Resumo do casamento">
-    <article class="metric-card" data-motion-card data-motion-tilt="2.2"><span class="metric-icon blush" data-motion-depth="front">♡</span><div data-motion-depth="front"><p>Convidados confirmados</p><strong><span data-live-key="confirmed_guests" data-live-value="{{ stats.confirmed_guests }}" data-motion-number>{{ stats.confirmed_guests }}</span><span data-live-key="guest_target">{% if settings.guest_target %}/{{ settings.guest_target }}{% endif %}</span> <small><span data-live-key="guests" data-live-value="{{ stats.guests }}" data-motion-number>{{ stats.guests }}</span> registados</small></strong></div><a class="metric-arrow" href="/guests" aria-label="Abrir convidados" data-motion-depth="front">↗</a></article>
+    <a class="metric-card" href="/guests" data-motion-card data-motion-tilt="2.2">
+      <span class="metric-icon blush" data-motion-depth="front" aria-hidden="true">♡</span>
+      <div data-motion-depth="front"><p>Convidados confirmados</p><strong><span data-live-key="confirmed_guests" data-live-value="{{ stats.confirmed_guests }}" data-motion-number>{{ stats.confirmed_guests }}</span><span data-live-key="guest_target">{% if settings.guest_target %}/{{ settings.guest_target }}{% endif %}</span></strong><small><span data-live-key="guests" data-live-value="{{ stats.guests }}" data-motion-number>{{ stats.guests }}</span> registados no total</small></div>
+      <span class="metric-arrow" data-motion-depth="front" aria-hidden="true">↗</span>
+    </a>
     {% if settings.dashboard_show_finance %}
-    <article class="metric-card" data-motion-card data-motion-tilt="2.2"><span class="metric-icon gold" data-motion-depth="front">◈</span><div data-motion-depth="front"><p>Despesas atuais</p><strong><span data-live-key="expenses" data-live-value="{{ finance.expenses }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.expenses) }}</span> <small><span data-live-key="categories" data-live-value="{{ finance.categories }}" data-motion-number>{{ finance.categories }}</span> categorias</small></strong></div><a class="metric-arrow" href="/budget" aria-label="Abrir orçamento" data-motion-depth="front">↗</a></article>
+    <a class="metric-card" href="/budget" data-motion-card data-motion-tilt="2.2">
+      <span class="metric-icon gold" data-motion-depth="front" aria-hidden="true">◈</span>
+      <div data-motion-depth="front"><p>Despesas atuais</p><strong data-live-key="expenses" data-live-value="{{ finance.expenses }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.expenses) }}</strong><small><span data-live-key="categories" data-live-value="{{ finance.categories }}" data-motion-number>{{ finance.categories }}</span> categorias de orçamento</small></div>
+      <span class="metric-arrow" data-motion-depth="front" aria-hidden="true">↗</span>
+    </a>
     {% endif %}
-    <article class="metric-card" data-motion-card data-motion-tilt="2.2"><span class="metric-icon sand" data-motion-depth="front">✓</span><div data-motion-depth="front"><p>Checklist concluída</p><strong><span data-live-key="task_percentage" data-live-value="{{ stats.task_percentage }}" data-motion-number>{{ stats.task_percentage }}%</span> <small><span data-live-key="completed_tasks" data-live-value="{{ stats.completed_tasks }}" data-motion-number>{{ stats.completed_tasks }}</span>/<span data-live-key="tasks" data-live-value="{{ stats.tasks }}" data-motion-number>{{ stats.tasks }}</span> tarefas</small></strong></div><a class="metric-arrow" href="/checklist" aria-label="Abrir checklist" data-motion-depth="front">↗</a></article>
+    <a class="metric-card" href="/checklist" data-motion-card data-motion-tilt="2.2">
+      <span class="metric-icon sand" data-motion-depth="front" aria-hidden="true">✓</span>
+      <div data-motion-depth="front"><p>Checklist concluída</p><strong data-live-key="task_percentage" data-live-value="{{ stats.task_percentage }}" data-motion-number>{{ stats.task_percentage }}%</strong><small><span data-live-key="completed_tasks" data-live-value="{{ stats.completed_tasks }}" data-motion-number>{{ stats.completed_tasks }}</span> de <span data-live-key="tasks" data-live-value="{{ stats.tasks }}" data-motion-number>{{ stats.tasks }}</span> tarefas</small></div>
+      <span class="metric-arrow" data-motion-depth="front" aria-hidden="true">↗</span>
+    </a>
   </section>
 
   <section class="dashboard-grid">
-    {% call card('Próximas tarefas', 'O que merece atenção agora.', 'next-steps', '/checklist', 'Abrir checklist', 1.6) %}
-      {% if upcoming_tasks or upcoming_payments %}<div class="activity-list task-list">{% for task in upcoming_tasks %}<article><span class="empty-icon">✓</span><p><strong>{{ task.title }}</strong><small>{{ task.due_date.strftime('%d/%m/%Y') }}{% if task.assignee %} · {{ task.assignee }}{% endif %} · {{ task.priority }}</small></p><a class="metric-arrow" href="/checklist/{{ task.id }}/edit" aria-label="Editar {{ task.title }}">↗</a></article>{% endfor %}{% for payment in upcoming_payments %}<article><span class="empty-icon">€</span><p><strong>{{ payment.reference or 'Pagamento pendente' }}</strong><small>{{ payment.payment_date.strftime('%d/%m/%Y') }} · {{ currency_symbol }}{{ '%.2f'|format(payment.amount) }}</small></p><a class="metric-arrow" href="/payments/{{ payment.id }}/edit" aria-label="Editar pagamento">↗</a></article>{% endfor %}</div>{% else %}<div class="empty-state"><span class="empty-icon">✓</span><h3>Nada urgente por agora.</h3><p>As tarefas e pagamentos com data próxima vão aparecer aqui automaticamente.</p><a class="text-button" href="/checklist/new">Adicionar tarefa <span>→</span></a></div>{% endif %}
+    {% call card('Próximas tarefas', 'O que merece atenção agora.', 'next-steps dashboard-panel', '/checklist', 'Abrir checklist', 1.6) %}
+      {% if upcoming_tasks or upcoming_payments %}
+      <div class="activity-list task-list">
+        {% for task in upcoming_tasks %}
+        <article>
+          <span class="dashboard-list-icon is-task" aria-hidden="true">✓</span>
+          <p><strong>{{ task.title }}</strong><small><time datetime="{{ task.due_date.isoformat() }}">{{ task.due_date.strftime('%d/%m/%Y') }}</time>{% if task.assignee %}<span>{{ task.assignee }}</span>{% endif %}<em data-priority="{{ task.priority|lower }}">{{ task.priority }}</em></small></p>
+          <a class="metric-arrow" href="/checklist/{{ task.id }}/edit" aria-label="Editar {{ task.title }}">↗</a>
+        </article>
+        {% endfor %}
+        {% for payment in upcoming_payments %}
+        <article>
+          <span class="dashboard-list-icon is-payment" aria-hidden="true">€</span>
+          <p><strong>{{ payment.reference or 'Pagamento pendente' }}</strong><small><time datetime="{{ payment.payment_date.isoformat() }}">{{ payment.payment_date.strftime('%d/%m/%Y') }}</time><span>{{ currency_symbol }}{{ '%.2f'|format(payment.amount) }}</span><em>Pagamento</em></small></p>
+          <a class="metric-arrow" href="/payments/{{ payment.id }}/edit" aria-label="Editar pagamento">↗</a>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state"><span class="empty-icon" aria-hidden="true">✓</span><h3>Nada urgente por agora.</h3><p>As tarefas e pagamentos com data próxima vão aparecer aqui automaticamente.</p><a class="text-button" href="/checklist/new">Adicionar tarefa <span aria-hidden="true">→</span></a></div>
+      {% endif %}
     {% endcall %}
 
     {% if settings.dashboard_show_finance %}
-    {% call card('Visão do orçamento', 'Acompanhem cada escolha com clareza.', 'budget-card', '/budget', 'Abrir orçamento', 1.6) %}
-      <div class="budget-total"><span>Despesas atuais</span><strong data-live-key="budget_expenses" data-live-value="{{ finance.expenses }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.expenses) }}</strong><small>de <span data-live-key="budget_total" data-live-value="{{ finance.total }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.total) }}</span> · <span data-live-key="budget_allocated" data-live-value="{{ finance.allocated }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.allocated) }}</span> planeados · <span data-live-key="budget_pending" data-live-value="{{ finance.pending }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.pending) }}</span> pendentes · <span data-live-key="budget_remaining" data-live-value="{{ finance.remaining }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.remaining) }}</span> disponíveis</small></div>
+    {% call card('Visão do orçamento', 'Acompanhem cada escolha com clareza.', 'budget-card dashboard-panel', '/budget', 'Abrir orçamento', 1.6) %}
+      <div class="budget-total"><span>Despesas atuais</span><strong data-live-key="budget_expenses" data-live-value="{{ finance.expenses }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.expenses) }}</strong><small>valor efetivamente registado</small></div>
+      <dl class="dashboard-budget-breakdown">
+        <div><dt>Orçamento</dt><dd data-live-key="budget_total" data-live-value="{{ finance.total }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.total) }}</dd></div>
+        <div><dt>Planeado</dt><dd data-live-key="budget_allocated" data-live-value="{{ finance.allocated }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.allocated) }}</dd></div>
+        <div><dt>Pendente</dt><dd data-live-key="budget_pending" data-live-value="{{ finance.pending }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.pending) }}</dd></div>
+        <div><dt>Disponível</dt><dd data-live-key="budget_remaining" data-live-value="{{ finance.remaining }}" data-motion-number data-motion-decimals="2">{{ currency_symbol }}{{ '%.2f'|format(finance.remaining) }}</dd></div>
+      </dl>
       {{ progress('Orçamento utilizado', finance.percentage ~ '%', finance.progress_percentage, 'gold', 'budget_percentage') }}
       <p class="budget-warning" data-live-budget-alert {% if not budget_alert %}hidden{% endif %}>A utilização atingiu o alerta definido de {{ settings.budget_alert_percent }}%.</p>
-      <a class="card-link" href="/budget">Gerir orçamento <span>→</span></a>
+      <a class="card-link" href="/budget">Gerir orçamento <span aria-hidden="true">→</span></a>
     {% endcall %}
     {% endif %}
   </section>
 
   {% if settings.dashboard_show_activity %}
-  {% call card('Últimas alterações', 'Tudo o que foi guardado por vocês.', 'activity-card dashboard-section', '/activity', 'Abrir histórico', 1.4) %}
+  {% call card('Últimas alterações', 'Tudo o que foi guardado por vocês.', 'activity-card dashboard-section dashboard-panel', '/activity', 'Abrir histórico', 1.4) %}
     <div data-live-activity-region>
-      {% if activities %}<div class="activity-list">{% for activity in activities %}<article><span class="empty-icon">✦</span><p><strong>{{ activity.user_name }} {{ activity.description }}</strong><small>{{ activity.occurred_at.strftime('%d/%m/%Y %H:%M') }}</small></p></article>{% endfor %}</div>{% else %}<div class="empty-state"><span class="empty-icon">✦</span><h3>Ainda não há atividade.</h3><p>As ações guardadas pelos dois utilizadores vão aparecer aqui.</p></div>{% endif %}
+      {% if activities %}
+      <div class="activity-list dashboard-activity-list">
+        {% for activity in activities %}
+        <article><span class="dashboard-list-icon is-activity" aria-hidden="true">✦</span><p><strong>{{ activity.user_name }} {{ activity.description }}</strong><small><time datetime="{{ activity.occurred_at.isoformat() }}">{{ activity.occurred_at.strftime('%d/%m/%Y %H:%M') }}</time></small></p></article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state"><span class="empty-icon" aria-hidden="true">✦</span><h3>Ainda não há atividade.</h3><p>As ações guardadas pelos dois utilizadores vão aparecer aqui.</p></div>
+      {% endif %}
     </div>
   {% endcall %}
   {% endif %}
 
   {% if settings.dashboard_show_moodboard %}
-  {% call card('Inspiração para o vosso dia', 'Guardem ideias que contam a vossa história.', 'inspiration-card', '/moodboard', 'Abrir moodboard', 1.4) %}
-    <div class="inspiration-layout">{% if moodboard_items %}<div class="dashboard-moodboard">{% for item in moodboard_items %}<img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy">{% endfor %}</div>{% else %}<div class="inspiration-art"><span>✿</span><span>⌇</span><span>♡</span></div>{% endif %}<div><h3>{{ moodboard_items|length }} inspirações guardadas</h3><p>Criem uma coleção de cores, detalhes e momentos que vão tornar este dia só vosso.</p><a class="secondary-button" href="/moodboard">Abrir moodboard</a></div></div>
+  {% call card('Inspiração para o vosso dia', 'Guardem ideias que contam a vossa história.', 'inspiration-card dashboard-panel', '/moodboard', 'Abrir moodboard', 1.4) %}
+    <div class="inspiration-layout">
+      {% if moodboard_items %}<div class="dashboard-moodboard">{% for item in moodboard_items %}<img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy">{% endfor %}</div>{% else %}<div class="inspiration-art" aria-hidden="true"><span>✿</span><span>⌇</span><span>♡</span></div>{% endif %}
+      <div><span class="inspiration-count">{{ moodboard_items|length }} guardadas</span><h3>Uma visão que começa a ganhar forma</h3><p>Criem uma coleção de cores, detalhes e momentos que vão tornar este dia só vosso.</p><a class="secondary-button" href="/moodboard">Abrir moodboard</a></div>
+    </div>
   {% endcall %}
   {% endif %}
 </div>
 {% endblock %}
+
 {% block scripts %}
-  <script src="/static/js/dashboard.js" defer></script>
+<script src="/static/js/dashboard.js" defer></script>
 {% endblock %}

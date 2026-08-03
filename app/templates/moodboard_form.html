@@ -29,11 +29,12 @@
   {% endif %}
 
   <div class="moodboard-editor-layout">
-    <form method="post" class="card form-grid record-form moodboard-record-form">
+    <form method="post" class="card form-grid record-form moodboard-record-form" data-moodboard-record-form>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <label>
-        Título
+      <label for="moodboard-title">
+        <span class="moodboard-field-heading">Título <small data-title-count aria-live="polite"></small></span>
         <input
+          id="moodboard-title"
           name="title"
           value="{{ item.title if item else '' }}"
           maxlength="200"
@@ -41,9 +42,9 @@
           required
         >
       </label>
-      <label>
+      <label for="moodboard-collection">
         Coleção
-        <select name="collection_id" required>
+        <select id="moodboard-collection" name="collection_id" required>
           {% for collection in collections %}
           <option
             value="{{ collection.id }}"
@@ -52,22 +53,26 @@
           {% endfor %}
         </select>
       </label>
-      <label class="moodboard-wide-field">
+      <label class="moodboard-wide-field" for="moodboard-image-url">
         URL direto da imagem
         <input
+          id="moodboard-image-url"
           type="url"
           name="image_url"
           value="{{ item.image_url if item else '' }}"
           placeholder="https://.../imagem.jpg"
           maxlength="1000"
           data-image-url
+          aria-describedby="moodboard-image-help moodboard-image-status"
           required
         >
-        <small>Utilizem um endereço público HTTPS que termine numa imagem sempre que possível.</small>
+        <small id="moodboard-image-help">Utilizem um endereço público HTTPS que termine numa imagem sempre que possível.</small>
+        <small class="moodboard-image-status" id="moodboard-image-status" data-image-status role="status" aria-live="polite"></small>
       </label>
-      <label class="moodboard-wide-field">
+      <label class="moodboard-wide-field" for="moodboard-source-url">
         URL da referência
         <input
+          id="moodboard-source-url"
           type="url"
           name="source_url"
           value="{{ item.source_url if item else '' }}"
@@ -75,25 +80,27 @@
           maxlength="1000"
         >
       </label>
-      <label>
+      <label for="moodboard-tags">
         Etiquetas
         <input
+          id="moodboard-tags"
           name="tags"
           value="{{ item.tags if item else '' }}"
           placeholder="flores, rosa, cerimónia"
           maxlength="300"
         >
       </label>
-      <label class="moodboard-wide-field">
-        Notas
+      <label class="moodboard-wide-field" for="moodboard-notes">
+        <span class="moodboard-field-heading">Notas <small data-notes-count aria-live="polite"></small></span>
         <textarea
+          id="moodboard-notes"
           name="notes"
           maxlength="10000"
           placeholder="O que vos inspira nesta referência?"
         >{{ item.notes if item else "" }}</textarea>
       </label>
       <div class="form-actions moodboard-wide-field">
-        <span>URLs, metadados e alterações ficam guardados diretamente na base de dados.</span>
+        <span><strong>Gravação segura</strong> · As alterações são enviadas diretamente para a base de dados.</span>
         <button class="primary-button" type="submit">
           <span aria-hidden="true">✓</span> Guardar inspiração
         </button>
@@ -119,6 +126,9 @@
         </div>
         <p data-form-preview-caption>{{ item.title if item else "A vossa inspiração" }}</p>
       </div>
+      <p class="moodboard-preview-status" data-form-preview-status role="status" aria-live="polite">
+        {% if item %}Pré-visualização carregada.{% else %}Introduzam um URL de imagem para testar a referência.{% endif %}
+      </p>
       <p class="moodboard-form-tip">
         Dica: adicionem etiquetas consistentes para encontrarem rapidamente paletas,
         flores, roupa ou decoração.

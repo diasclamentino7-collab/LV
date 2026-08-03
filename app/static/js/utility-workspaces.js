@@ -63,6 +63,11 @@
       if (empty) {
         empty.hidden = visible !== 0;
       }
+      root.dataset.resultsState = visible === 0
+        ? "empty"
+        : hasQuery
+          ? "filtered"
+          : "complete";
     };
 
     const filterItems = () => {
@@ -92,6 +97,12 @@
           "aria-sort",
           isActive ? (activeSort.direction === "asc" ? "ascending" : "descending") : "none",
         );
+        const indicator = heading.querySelector("[data-utility-sort-key] span");
+        if (indicator) {
+          indicator.textContent = isActive
+            ? (activeSort.direction === "asc" ? "↑" : "↓")
+            : "↕";
+        }
       });
       if (sortSelect) {
         const value = activeSort.key + ":" + activeSort.direction;
@@ -111,6 +122,9 @@
         const comparison = typeof leftValue === "number"
           ? leftValue - rightValue
           : collator.compare(leftValue, rightValue);
+        if (comparison === 0) {
+          return (originalPosition.get(left) || 0) - (originalPosition.get(right) || 0);
+        }
         return direction === "desc" ? comparison * -1 : comparison;
       });
       sorted.forEach((item) => list.append(item));
