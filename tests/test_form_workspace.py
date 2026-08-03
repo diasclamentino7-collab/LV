@@ -80,6 +80,8 @@ def field_value(field, slug: str, category_id: int, vendor_id: int) -> str:
         return str(vendor_id)
     if field.kind == "number":
         return "25.00"
+    if field.kind == "integer":
+        return "8"
     if field.kind == "date":
         return "2026-08-03"
     if field.kind == "datetime-local":

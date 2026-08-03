@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% macro initials(name) -%}
+  {%- set parts = name.split() -%}
+  {{- parts[0][:1]|upper if parts else '?' -}}
+  {{- parts[-1][:1]|upper if parts|length > 1 else '' -}}
+{%- endmacro %}
+
+{% macro assignment_select(guest, current_table='') -%}
+<label class="table-assignment-field">
+  <span class="visually-hidden">Mesa atribuída a {{ guest.name }}</span>
+  <select
+    data-table-assignment
+    aria-label="Alterar mesa de {{ guest.name }}"
+    title="Alterar mesa de {{ guest.name }}"
+  >
+    <option value=""{% if not current_table %} selected{% endif %}>Sem mesa</option>
+    {% for option in table_options %}
+    <option value="{{ option }}"{% if current_table == option %} selected{% endif %}>{{ option }}</option>
+    {% endfor %}
+  </select>
+</label>
+{%- endmacro %}
+
+{% macro guest_item(guest, current_table='') -%}
+<li
+  class="table-guest-item"
+  data-table-guest
+  data-guest-id="{{ guest.id }}"
+  data-guest-name="{{ guest.name }}"
+  data-guest-side="{{ guest.side|default('', true) }}"
+  data-guest-group="{{ guest.age_group|default('', true) }}"
+  data-guest-rsvp="{{ guest.rsvp_status|default('', true) }}"
+  data-current-table="{{ current_table }}"
+  data-updated-at="{{ guest.updated_at|default('', true) }}"
+>
+  <span class="table-guest-grip" aria-hidden="true" title="Arrastar para outra mesa">⋮⋮</span>
+  <a class="table-guest-avatar" href="/guests/{{ guest.id }}/edit" aria-label="Abrir detalhes de {{ guest.name }}">{{ initials(guest.name) }}</a>
+  <div class="table-guest-copy">
+    <a href="/guests/{{ guest.id }}/edit"><strong>{{ guest.name }}</strong></a>
+    <p>
+      {% if guest.side %}<span>{{ guest.side }}</span>{% endif %}
+      {% if guest.age_group %}<span>{{ guest.age_group }}</span>{% endif %}
+      {% if guest.rsvp_status %}<span data-rsvp="{{ guest.rsvp_status|lower }}">{{ guest.rsvp_status }}</span>{% endif %}
+    </p>
+  </div>
+  {{ assignment_select(guest, current_table) }}
+  <small class="table-guest-save-state" data-table-save-state aria-live="polite">Guardado</small>
+</li>
+{%- endmacro %}
+
+{% macro visual_seat(guest=none, seat_number=1, seat_total=1) -%}
+<li
+  class="table-seat{% if guest %} is-occupied{% endif %}"
+  style="--seat-index: {{ seat_number - 1 }}; --seat-total: {{ seat_total }}"
+  {% if guest %}data-seat-occupant-id="{{ guest.id }}"{% endif %}
+>
+  {% if guest %}
+  <a href="/guests/{{ guest.id }}/edit" title="Lugar {{ seat_number }} · {{ guest.name }}" aria-label="Lugar {{ seat_number }}, {{ guest.name }}">
+    <small>{{ seat_number }}</small><strong>{{ initials(guest.name) }}</strong>
+  </a>
+  {% else %}
+  <span title="Lugar {{ seat_number }} livre" aria-label="Lugar {{ seat_number }} livre">
+    <small>{{ seat_number }}</small><strong aria-hidden="true">+</strong>
+  </span>
+  {% endif %}
+</li>
+{%- endmacro %}
+
+{% set zones = namespace(values=[]) %}
+{% set shapes = namespace(values=[]) %}
+{% for table in tables %}
+  {% if table.zone and table.zone not in zones.values %}{% set zones.values = zones.values + [table.zone] %}{% endif %}
+  {% if table.shape and table.shape not in shapes.values %}{% set shapes.values = shapes.values + [table.shape] %}{% endif %}
+{% endfor %}
+
+{% block title %}Plano de Mesas · {{ display_app_name|default(app_name) }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/table-plan.css') }}">
+{% endblock %}
+
+{% block content %}
+<section
+  class="table-plan-workspace"
+  data-table-plan
+  data-csrf-token="{{ csrf_token }}"
+  data-guest-api="/api/guests"
+>
+  <section class="page-intro table-plan-intro">
+    <div>
+      <p class="eyebrow">Mapa vivo · organização visual</p>
+      <h1>Plano de Mesas</h1>
+      <p class="intro-copy">Vejam num relance onde cada pessoa fica sentada e mudem qualquer lugar sem sair desta página.</p>
+    </div>
+    <div class="page-actions table-plan-actions">
+      <a class="secondary-button" href="/exports/table-plan.pdf" download data-export>Exportar PDF</a>
+      <a class="secondary-button" href="/table-plan?archived=true">Ver eliminados</a>
+      <a class="secondary-button" href="/guests">Gerir convidados</a>
+      <a class="primary-button" href="/table-plan/new">+ Criar mesa</a>
+    </div>
+  </section>
+
+  {% if message %}<div class="success-banner" role="status">{% if message == 'created' %}Mesa criada com sucesso.{% elif message == 'updated' %}Definição da mesa guardada.{% else %}Alteração concluída sem perder dados.{% endif %}</div>{% endif %}
+  {% if error %}<div class="form-error" role="alert">Não foi possível concluir a operação. Recarreguem a página e tentem novamente.</div>{% endif %}
+
+  <section class="table-plan-metrics" aria-label="Resumo do plano de mesas" data-motion-list>
+    <article class="table-plan-metric is-tables" data-motion-card>
+      <span aria-hidden="true">⌘</span>
+      <div><small>Mesas</small><strong data-plan-stat="table_count" data-motion-number>{{ stats.table_count|default(tables|length, true) }}</strong><p>definidas no mapa</p></div>
+    </article>
+    <article class="table-plan-metric is-seated" data-motion-card>
+      <span aria-hidden="true">✓</span>
+      <div><small>Com lugar</small><strong data-plan-stat="assigned_guests" data-motion-number>{{ stats.assigned_guests|default(0, true) }}</strong><p>de <b data-plan-stat="total_guests">{{ stats.total_guests|default(0, true) }}</b> convidados</p></div>
+    </article>
+    <article class="table-plan-metric is-waiting" data-motion-card>
+      <span aria-hidden="true">♡</span>
+      <div><small>Sem mesa</small><strong data-plan-stat="unassigned_guests" data-motion-number>{{ stats.unassigned_guests|default(unassigned_guests|length, true) }}</strong><p>por distribuir</p></div>
+    </article>
+    <article class="table-plan-metric is-free" data-motion-card>
+      <span aria-hidden="true">＋</span>
+      <div><small>Lugares livres</small><strong data-plan-stat="seats_available" data-motion-number>{{ stats.seats_available|default(0, true) }}</strong><p>em <b data-plan-stat="seats_total">{{ stats.seats_total|default(0, true) }}</b> lugares</p></div>
+    </article>
+    <article class="table-plan-metric is-occupancy" data-motion-card>
+      <span class="table-plan-ring" style="--occupancy: {{ [stats.occupancy_percent|default(0, true), 100]|min }}" aria-hidden="true"><i></i></span>
+      <div><small>Ocupação</small><strong><b data-plan-stat="occupancy_percent">{{ stats.occupancy_percent|default(0, true) }}</b>%</strong><p>do espaço planeado</p></div>
+    </article>
+  </section>
+
+  <section class="table-plan-toolbar card" aria-label="Pesquisar e filtrar o mapa">
+    <label class="table-plan-search">
+      <span aria-hidden="true">⌕</span>
+      <span class="visually-hidden">Pesquisar mesa ou convidado</span>
+      <input type="search" value="{{ search|default('', true) }}" placeholder="Pesquisar mesa, zona ou convidado…" autocomplete="off" data-table-search>
+      <kbd>/</kbd>
+    </label>
+    <label>
+      <span>Zona</span>
+      <select data-table-zone-filter><option value="">Todas</option>{% for zone in zones.values|sort %}<option value="{{ zone }}">{{ zone }}</option>{% endfor %}</select>
+    </label>
+    <label>
+      <span>Formato</span>
+      <select data-table-shape-filter><option value="">Todos</option>{% for shape in shapes.values|sort %}<option value="{{ shape }}">{{ shape }}</option>{% endfor %}</select>
+    </label>
+    <label>
+      <span>Ocupação</span>
+      <select data-table-capacity-filter>
+        <option value="">Todas</option>
+        <option value="available">Com lugares livres</option>
+        <option value="full">Completas</option>
+        <option value="over">Acima da capacidade</option>
+      </select>
+    </label>
+    <button class="table-plan-clear" type="button" data-table-clear hidden>Limpar filtros</button>
+    <p class="table-plan-result" aria-live="polite"><strong data-table-visible-count>{{ tables|length }}</strong> mesas visíveis</p>
+  </section>
+
+  <div class="table-plan-tip" role="note">
+    <span aria-hidden="true">✦</span>
+    <p><strong>Mudar um lugar é simples.</strong> Escolham outra mesa no seletor junto ao nome. No computador também podem arrastar a pessoa para uma mesa.</p>
+    <span class="table-plan-live" data-table-live-state role="status" aria-live="polite"><i></i> Tudo guardado</span>
+  </div>
+
+  <div class="table-plan-layout">
+    <section class="table-map-board" aria-labelledby="table-map-title">
+      <header class="table-map-heading">
+        <div><p class="eyebrow">Vista do espaço</p><h2 id="table-map-title">Mapa das mesas</h2></div>
+        <span><b data-map-assigned>{{ stats.assigned_guests|default(0, true) }}</b> pessoas sentadas</span>
+      </header>
+
+      <div class="table-map-grid" data-table-grid>
+        {% for table in tables %}
+        {% set occupancy = table.occupancy|default(table.guests|length, true)|int %}
+        {% set capacity = table.capacity|default(0, true)|int %}
+        {% set seat_total = [[capacity, occupancy, 1]|max, 16]|min %}
+        {% set is_over = occupancy > capacity %}
+        {% set is_full = capacity > 0 and occupancy == capacity %}
+        <article
+          class="table-map-card{% if is_over %} is-over-capacity{% elif is_full %} is-full{% endif %}"
+          data-table-card
+          data-table-name="{{ table.name }}"
+          data-table-zone="{{ table.zone|default('', true) }}"
+          data-table-shape="{{ table.shape|default('', true) }}"
+          data-table-notes="{{ table.notes|default('', true) }}"
+          data-table-capacity="{{ capacity }}"
+          data-table-id="{{ table.id|default('', true) }}"
+          data-table-synthetic="{{ 'true' if table.is_synthetic else 'false' }}"
+        >
+          <header class="table-card-heading">
+            <div>
+              <p>{% if table.zone %}<span>{{ table.zone }}</span>{% endif %}<span>{{ table.shape|default('Mesa', true) }}</span></p>
+              <h3>{{ table.name }}</h3>
+            </div>
+            {% if table.id %}
+            <div class="table-card-actions">
+              <a href="/table-plan/{{ table.id }}/edit" aria-label="Editar definição de {{ table.name }}">Editar</a>
+              <form method="post" action="/table-plan/{{ table.id }}/archive" onsubmit="return confirm('Eliminar a ficha desta mesa? Ficará nos eliminados; os convidados não serão apagados e a mesa continuará visível enquanto tiver atribuições.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" aria-label="Eliminar {{ table.name }}">Eliminar</button>
+              </form>
+            </div>
+            {% else %}<span class="table-synthetic-badge" title="Esta mesa nasceu de uma atribuição já existente">Automática</span>{% endif %}
+          </header>
+
+          {% if table.duplicate_definitions %}
+          <aside class="table-duplicate-warning" role="note" aria-label="Fichas duplicadas da {{ table.name }}">
+            <span aria-hidden="true">!</span>
+            <div>
+              <strong>Existem {{ table.definition_count|default(table.duplicate_definitions|length + 1, true) }} fichas com este nome</strong>
+              <p>Nenhum dado foi escondido. Revejam as fichas repetidas e mantenham apenas a definição pretendida.</p>
+              <ul>
+                {% for duplicate in table.duplicate_definitions %}
+                <li>
+                  <a href="{{ duplicate.edit_url }}">Rever ficha #{{ duplicate.id }}</a>
+                  {% if duplicate.zone or duplicate.shape %}<small>{{ duplicate.zone or 'Sem zona' }} · {{ duplicate.shape or 'Sem formato' }}</small>{% endif %}
+                  <form method="post" action="/table-plan/{{ duplicate.id }}/archive" onsubmit="return confirm('Eliminar esta ficha repetida? Ficará preservada nos eliminados; a mesa e os convidados continuarão visíveis através da ficha principal.')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" aria-label="Eliminar ficha repetida número {{ duplicate.id }}">Eliminar repetida</button>
+                  </form>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </aside>
+          {% endif %}
+
+          <div class="table-diagram" data-table-diagram data-shape="{{ table.shape|default('Redonda', true) }}">
+            <div class="table-surface">
+              <small>Mesa</small><strong>{{ table.name }}</strong><span><b data-table-occupancy>{{ occupancy }}</b> / {{ capacity }}</span>
+            </div>
+            <ol class="table-seat-ring" data-seat-ring aria-label="Lugares da {{ table.name }}">
+              {% for seat_index in range(seat_total) %}
+                {{ visual_seat(table.guests[seat_index] if seat_index < table.guests|length else none, seat_index + 1, seat_total) }}
+              {% endfor %}
+            </ol>
+            <span class="table-seat-overflow" data-seat-overflow{% if occupancy <= 16 and capacity <= 16 %} hidden{% endif %}>{% if occupancy > 16 %}+{{ occupancy - 16 }} pessoas no rol{% elif capacity > 16 %}+{{ capacity - 16 }} lugares adicionais{% endif %}</span>
+          </div>
+
+          <div class="table-capacity-row">
+            <div class="table-capacity-copy">
+              <strong data-table-capacity-label>{% if is_over %}{{ occupancy - capacity }} acima da capacidade{% elif is_full %}Mesa completa{% else %}{{ table.available|default(capacity - occupancy, true) }} lugares livres{% endif %}</strong>
+              <span data-table-capacity-state>{% if is_over %}Revejam esta distribuição{% elif is_full %}Distribuição concluída{% else %}Disponível{% endif %}</span>
+            </div>
+            <div class="table-capacity-track" role="progressbar" aria-label="Ocupação de {{ table.name }}" aria-valuemin="0" aria-valuemax="{{ [capacity, occupancy, 1]|max }}" aria-valuenow="{{ occupancy }}"><i style="width: {{ [100, (occupancy * 100 / capacity)|round if capacity else 100]|min }}%"></i></div>
+          </div>
+
+          {% if table.notes %}<p class="table-card-note">{{ table.notes }}</p>{% endif %}
+
+          <section class="table-roster" aria-label="Pessoas na {{ table.name }}">
+            <header><strong>Quem fica aqui</strong><span><b data-roster-count>{{ occupancy }}</b> pessoas</span></header>
+            <ul class="table-roster-list" data-table-roster>
+              {% for guest in table.guests %}{{ guest_item(guest, table.name) }}{% endfor %}
+            </ul>
+            <p class="table-roster-empty" data-table-roster-empty{% if table.guests %} hidden{% endif %}>Arrastem ou escolham esta mesa junto ao nome de um convidado.</p>
+          </section>
+        </article>
+        {% endfor %}
+      </div>
+
+      <div class="table-map-empty" data-table-filter-empty{% if tables %} hidden{% endif %}>
+        <span aria-hidden="true">⌘</span><h3>{% if tables %}Nenhuma mesa corresponde aos filtros.{% else %}O mapa está pronto para a primeira mesa.{% endif %}</h3>
+        <p>{% if tables %}Limpem a pesquisa para voltar a ver o espaço completo.{% else %}Criem uma mesa e comecem a distribuir os lugares visualmente.{% endif %}</p>
+        {% if tables %}<button class="secondary-button" type="button" data-table-empty-clear>Limpar filtros</button>{% else %}<a class="primary-button" href="/table-plan/new">Criar primeira mesa</a>{% endif %}
+      </div>
+    </section>
+
+    <aside class="unassigned-panel" data-unassigned-panel data-drop-table="" aria-labelledby="unassigned-title">
+      <header>
+        <span aria-hidden="true">♡</span>
+        <div><p class="eyebrow">Por distribuir</p><h2 id="unassigned-title">Sem mesa <b data-unassigned-count>{{ unassigned_guests|length }}</b></h2></div>
+      </header>
+      <p>Estas pessoas ainda esperam pelo lugar perfeito.</p>
+      <ul class="unassigned-list" data-unassigned-list>
+        {% for guest in unassigned_guests %}{{ guest_item(guest) }}{% endfor %}
+      </ul>
+      <div class="unassigned-empty" data-unassigned-empty{% if unassigned_guests %} hidden{% endif %}>
+        <span aria-hidden="true">✓</span><strong>Toda a gente tem lugar.</strong><p>O plano está completamente distribuído.</p>
+      </div>
+      <a class="secondary-button unassigned-guests-link" href="/guests">Abrir lista de convidados</a>
+    </aside>
+  </div>
+
+  <div class="table-plan-celebration" data-table-celebration aria-hidden="true"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/table-plan.js') }}" defer></script>
+{% endblock %}

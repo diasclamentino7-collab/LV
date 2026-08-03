@@ -1,4 +1,4 @@
-const CACHE = "lv-wedding-v9";
+const CACHE = "lv-wedding-v10";
 const ASSETS = [
   "/static/css/app.css",
   "/static/css/motion.css",
@@ -11,6 +11,7 @@ const ASSETS = [
   "/static/css/module-workspace.css",
   "/static/css/form-workspace.css",
   "/static/css/utility-workspaces.css",
+  "/static/css/table-plan.css",
   "/static/js/motion.js",
   "/static/js/app.js",
   "/static/js/dashboard.js",
@@ -22,6 +23,7 @@ const ASSETS = [
   "/static/js/module-workspace.js",
   "/static/js/form-workspace.js",
   "/static/js/utility-workspaces.js",
+  "/static/js/table-plan.js",
   "/manifest.webmanifest",
   "/static/icons/icon.svg"
 ];

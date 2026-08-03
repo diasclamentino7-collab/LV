@@ -24,6 +24,12 @@ from app.services.auth_session import authenticated_user
 from app.services.budget import budget_snapshot, serialize_budget_snapshot
 from app.services.csrf import valid_csrf_token
 from app.services.record_deletion import create_tombstone, is_tombstoned, not_tombstoned
+from app.services.table_plan import (
+    MAX_TABLE_CAPACITY,
+    clean_table_name,
+    sync_table_name_assignments,
+    table_definition_name_exists,
+)
 
 router = APIRouter()
 
@@ -221,8 +227,39 @@ MODULES = {
         ("quinta",),
     ),
 }
+MODULES["table-plan"] = Module(
+    "table-plan",
+    "Plano de Mesas",
+    "Mesas, lugares e organização visual dos convidados.",
+    None,
+    (
+        Field("title", "Nome da mesa", required=True),
+        Field("responsible", "Lugares", "integer"),
+        Field(
+            "category",
+            "Formato",
+            "select",
+            ("Redonda", "Retangular", "Quadrada", "Oval", "Imperial", "Outro"),
+        ),
+        Field("location", "Zona"),
+        Field(
+            "status",
+            "Estado",
+            "select",
+            (
+                "A planear",
+                "Em organização",
+                "Completa",
+                "Pendente",
+                "Em curso",
+                "Concluído",
+            ),
+        ),
+        Field("description", "Notas", "textarea"),
+        Field("comments", "Comentários", "textarea"),
+    ),
+)
 for slug, title in {
-    "table-plan": "Plano de Mesas",
     "timeline": "Cronograma",
     "attire": "Roupa",
     "honeymoon": "Lua de Mel",
@@ -276,6 +313,21 @@ def value_for(field: Field, raw: str) -> Any:
             return Decimal(raw.replace(",", "."))
         except InvalidOperation:
             return Decimal("0")
+    if field.kind == "integer":
+        normalized = raw.strip().replace(",", ".")
+        if len(normalized) > 12 or "e" in normalized.casefold():
+            raise ValueError("O valor deve ser um número inteiro simples.")
+        try:
+            numeric = Decimal(normalized)
+        except InvalidOperation as error:
+            raise ValueError("O valor deve ser um número inteiro.") from error
+        if not numeric.is_finite() or numeric != numeric.to_integral_value():
+            raise ValueError("O valor deve ser um número inteiro.")
+        if numeric < 1:
+            raise ValueError("O valor deve ser igual ou superior a um.")
+        if numeric > MAX_TABLE_CAPACITY:
+            raise ValueError(f"O valor máximo é {MAX_TABLE_CAPACITY}.")
+        return str(int(numeric))
     return raw.strip()
 
 
@@ -323,7 +375,12 @@ def record_for(spec: Module, db: Session, record_id: int) -> Any | None:
 
 def save_values(spec: Module, record: Any, values: dict[str, str]) -> None:
     for field in spec.fields:
-        setattr(record, field.name, value_for(field, values.get(field.name, "")))
+        raw_value = values.get(field.name, "")
+        if field.required and not raw_value.strip():
+            raise ValueError(f"O campo {field.label} é obrigatório.")
+        setattr(record, field.name, value_for(field, raw_value))
+    if spec.slug == "table-plan":
+        record.title = clean_table_name(record.title)
 
 
 def relation_choices(db: Session) -> dict[str, list[Any]]:
@@ -533,6 +590,15 @@ async def create_record(request: Request, slug: str) -> RedirectResponse:
         try:
             record = spec.model() if spec.model else WorkspaceRecord(module=spec.slug)
             save_values(spec, record, values)
+            if spec.slug == "table-plan" and table_definition_name_exists(
+                db,
+                record.title,
+            ):
+                db.rollback()
+                return RedirectResponse(
+                    "/table-plan/new?error=duplicate",
+                    status_code=303,
+                )
             record.created_by_id = logged_user_id(request)
             record.updated_by_id = logged_user_id(request)
             db.add(record)
@@ -591,11 +657,32 @@ async def update_record(request: Request, slug: str, record_id: int) -> Redirect
         record = record_for(spec, db, record_id)
         if record is not None:
             try:
+                previous_table_name = (
+                    clean_table_name(record.title) if spec.slug == "table-plan" else ""
+                )
                 save_values(spec, record, values)
-                record.updated_by_id = logged_user_id(request)
+                if spec.slug == "table-plan" and table_definition_name_exists(
+                    db,
+                    record.title,
+                    exclude_id=record.id,
+                ):
+                    db.rollback()
+                    return RedirectResponse(
+                        f"/table-plan/{record_id}/edit?error=duplicate",
+                        status_code=303,
+                    )
+                user_id = logged_user_id(request)
+                record.updated_by_id = user_id
+                if spec.slug == "table-plan":
+                    sync_table_name_assignments(
+                        db,
+                        previous_table_name,
+                        record.title,
+                        user_id=user_id,
+                    )
                 record_activity(
                     db,
-                    logged_user_id(request),
+                    user_id,
                     "alterou",
                     f"alterou {spec.title.lower()}",
                     spec.slug,

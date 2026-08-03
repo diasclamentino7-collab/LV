@@ -73,6 +73,14 @@ em `/api/health`.
 | Todos os eliminados | `/deleted` |
 | Configurações | `/settings` |
 
+O **Plano de Mesas** apresenta uma planta visual das mesas, lugares ocupados e
+livres, convidados atribuídos e convidados ainda sem mesa. As atribuições podem
+ser alteradas diretamente no mapa e ficam imediatamente guardadas na base de
+dados, com controlo de concorrência entre os dois utilizadores. As fichas das
+mesas continuam disponíveis para definir nome, capacidade, forma, zona e notas;
+uma atribuição existente nunca desaparece se a ficha da mesa ainda não tiver
+sido criada.
+
 As rotas históricas `/ceremony` e `/quinta` são mantidas por compatibilidade e
 encaminham para os módulos consolidados sem alterar ou apagar os registos
 existentes.

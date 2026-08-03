@@ -73,10 +73,12 @@
             </select>
             {% elif field.kind == 'number' %}
             <div class="form-input-affix"><span aria-hidden="true">{{ currency_symbol|default('€') }}</span><input id="{{ control_id }}" name="{{ field.name }}" type="number" value="{{ value or '' }}" step="0.01" min="0" inputmode="decimal" placeholder="0,00" data-form-control aria-describedby="{{ hint_id }} {{ error_id }}" {% if is_required %}required{% endif %}></div>
+            {% elif field.kind == 'integer' %}
+            <input id="{{ control_id }}" name="{{ field.name }}" type="number" value="{{ value or '' }}" step="1" min="1" inputmode="numeric" placeholder="8" data-form-control aria-describedby="{{ hint_id }} {{ error_id }}" {% if is_required %}required{% endif %}>
             {% else %}
             <input id="{{ control_id }}" name="{{ field.name }}" type="{{ input_type }}" value="{{ value or '' }}" data-form-control aria-describedby="{{ hint_id }} {{ error_id }}" {% if input_type == 'email' %}autocomplete="email" inputmode="email" placeholder="nome@exemplo.pt"{% endif %} {% if input_type == 'tel' %}autocomplete="tel" inputmode="tel" placeholder="+351 900 000 000"{% endif %} {% if input_type == 'url' %}autocomplete="url" inputmode="url" placeholder="https://"{% endif %} {% if input_type in ('date', 'datetime-local') %}autocomplete="off"{% endif %} {% if is_required %}required{% endif %}>
             {% endif %}
-            <small class="form-field-hint" id="{{ hint_id }}">{% if field.kind == 'number' %}Valor igual ou superior a zero.{% elif field.kind == 'date' %}Escolham uma data no calendário.{% elif field.kind == 'datetime-local' %}Escolham a data e a hora.{% elif input_type == 'url' %}Incluam o endereço completo, começando por https://.{% elif field.kind == 'textarea' %}Podem acrescentar todos os detalhes úteis.{% elif field.kind == 'category' and not categories %}Criem primeiro a categoria necessária.{% else %}&nbsp;{% endif %}</small>
+            <small class="form-field-hint" id="{{ hint_id }}">{% if field.kind == 'number' %}Valor igual ou superior a zero.{% elif field.kind == 'integer' %}Número inteiro de lugares, igual ou superior a um.{% elif field.kind == 'date' %}Escolham uma data no calendário.{% elif field.kind == 'datetime-local' %}Escolham a data e a hora.{% elif input_type == 'url' %}Incluam o endereço completo, começando por https://.{% elif field.kind == 'textarea' %}Podem acrescentar todos os detalhes úteis.{% elif field.kind == 'category' and not categories %}Criem primeiro a categoria necessária.{% else %}&nbsp;{% endif %}</small>
             <small class="form-field-error" id="{{ error_id }}" data-form-field-error aria-live="polite"></small>
           </div>
           {% endfor %}
