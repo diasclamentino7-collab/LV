@@ -33,6 +33,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/motion.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/communication-drawer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/assistant-drawer.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/command-palette.css') }}">
     {% block styles %}{% endblock %}
     <script src="{{ url_for('static', path='js/motion.js') }}" defer></script>
@@ -147,6 +148,9 @@
             <button class="icon-button notification" type="button" data-motion-action="communication" data-communication-trigger aria-haspopup="dialog" aria-controls="communication-drawer" aria-label="Abrir centro de comunicação" title="Centro de comunicação">
               <span data-motion-icon aria-hidden="true">✦</span>
             </button>
+            <button class="icon-button notification" type="button" data-motion-action="assistant" data-assistant-trigger aria-haspopup="dialog" aria-controls="assistant-drawer" aria-label="Abrir assistente de planeamento" title="Assistente">
+              <span data-motion-icon aria-hidden="true">✨</span>
+            </button>
             <span class="header-divider" aria-hidden="true"></span>
             <details class="account-menu">
               <summary class="account-summary" aria-label="Abrir menu da conta de {{ current_user_name }}" aria-controls="account-menu-panel" aria-expanded="false">
@@ -177,6 +181,7 @@
     </div>
     {% include "_command_palette.html" %}
     {% include "_communication_drawer.html" %}
+    {% include "_assistant_drawer.html" %}
     {% block scripts %}{% endblock %}
   </body>
 </html>

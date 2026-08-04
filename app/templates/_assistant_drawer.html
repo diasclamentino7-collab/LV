@@ -1,0 +1,60 @@
+<dialog
+  class="assistant-dialog"
+  id="assistant-drawer"
+  aria-labelledby="assistant-drawer-title"
+  aria-describedby="assistant-drawer-description"
+  aria-modal="true"
+  data-motion-preference="{{ ui_settings.motion_preference|default('full') if ui_settings is defined else 'full' }}"
+>
+  <section class="assistant-panel">
+    <header class="assistant-heading">
+      <div>
+        <p class="assistant-eyebrow">Assistente de planeamento</p>
+        <h2 id="assistant-drawer-title">Assistente</h2>
+        <p id="assistant-drawer-description">
+          Perguntem sobre o vosso casamento; o assistente vê o orçamento, os convidados e as tarefas atuais.
+        </p>
+      </div>
+      <button class="assistant-close" type="button" data-assistant-close aria-label="Fechar assistente">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+      </button>
+    </header>
+
+    <div class="assistant-tabs" role="tablist" aria-label="Escolher assistente">
+      <button type="button" role="tab" aria-selected="true" data-assistant-tab="openai">ChatGPT</button>
+      <button type="button" role="tab" aria-selected="false" data-assistant-tab="anthropic">Claude</button>
+      <button type="button" role="tab" aria-selected="false" data-assistant-tab="gemini">Gemini</button>
+    </div>
+
+    <div class="assistant-content">
+      <div class="assistant-messages" data-assistant-messages aria-live="polite" aria-busy="true">
+        <div class="assistant-loading" role="status">
+          <i aria-hidden="true"></i>
+          <span>A carregar a conversa…</span>
+        </div>
+      </div>
+
+      <p class="assistant-feedback" data-assistant-feedback role="status" aria-live="polite"></p>
+
+      <form class="assistant-compose" data-assistant-compose aria-label="Enviar mensagem ao assistente">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="provider" value="openai" data-assistant-provider-field>
+        <label class="visually-hidden" for="assistant-input">Mensagem para o assistente</label>
+        <textarea
+          id="assistant-input"
+          name="content"
+          maxlength="2000"
+          rows="2"
+          placeholder="Perguntem alguma coisa sobre o casamento…"
+          required
+        ></textarea>
+        <button class="assistant-send" type="submit">
+          <span data-assistant-send-label>Enviar</span>
+          <span class="assistant-spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+    </div>
+  </section>
+</dialog>
+
+<script src="{{ url_for('static', path='js/assistant-drawer.js') }}" defer></script>
