@@ -77,32 +77,14 @@
 }
 .assistant-close:hover { color: #8f4863; background: white; }
 
-.assistant-tabs {
-  display: flex;
-  gap: 6px;
-  margin-top: 20px;
-  border-bottom: 1px solid var(--line, #ebe4e1);
-}
-.assistant-tabs button {
-  border: 0;
-  border-bottom: 2px solid transparent;
-  padding: 9px 4px 10px;
-  color: var(--muted, #847b7c);
-  background: transparent;
-  font-size: 12px;
-  font-weight: 700;
-}
-.assistant-tabs button[aria-selected="true"] {
-  color: #8e4662;
-  border-bottom-color: var(--primary, #d88ba7);
-}
-
 .assistant-content {
   display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  margin-top: 14px;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line, #ebe4e1);
 }
 
 .assistant-messages {

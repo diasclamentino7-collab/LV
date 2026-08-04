@@ -20,14 +20,12 @@ from app.services.security import hash_password
 
 
 class FakeSettings:
-    openai_api_key = "sk-test-openai"
-    openai_model = "gpt-4o-mini"
     gemini_api_key = "test-gemini-key"
     gemini_model = "gemini-2.0-flash"
 
 
 class UnconfiguredSettings(FakeSettings):
-    openai_api_key = ""
+    gemini_api_key = ""
 
 
 def csrf_from(page: str) -> str:
@@ -85,13 +83,13 @@ def test_unconfigured_provider_is_rejected_before_any_network_call(monkeypatch) 
         response = client.post(
             "/api/assistant/messages",
             data={
-                "provider": "openai",
+                "provider": "gemini",
                 "content": "Quanto orçamento resta?",
                 "csrf_token": csrf_from(page.text),
             },
         )
         assert response.status_code == 503
-        assert "ChatGPT" in response.json()["message"]
+        assert "Gemini" in response.json()["message"]
 
     with test_session() as db:
         assert db.scalars(select(AssistantMessage)).first() is None
@@ -148,10 +146,6 @@ def test_send_message_persists_conversation_and_calls_the_selected_provider(monk
         messages = history_response.json()["messages"]
         assert [m["role"] for m in messages] == ["user", "assistant"]
 
-        # A different provider's tab starts with its own, separate conversation.
-        openai_history = client.get("/api/assistant/messages?provider=openai")
-        assert openai_history.json()["messages"] == []
-
     with test_session() as db:
         stored = db.scalars(select(AssistantMessage)).all()
         assert len(stored) == 2
@@ -196,6 +190,6 @@ def test_unknown_provider_and_missing_csrf_are_rejected(monkeypatch) -> None:
 
         no_csrf = client.post(
             "/api/assistant/messages",
-            data={"provider": "openai", "content": "Olá"},
+            data={"provider": "gemini", "content": "Olá"},
         )
         assert no_csrf.status_code == 403

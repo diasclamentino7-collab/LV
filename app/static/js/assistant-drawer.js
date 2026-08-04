@@ -4,13 +4,13 @@
   const dialog = document.querySelector("#assistant-drawer");
   if (!(dialog instanceof HTMLDialogElement)) return;
 
+  const PROVIDER = "gemini";
+
   const panel = dialog.querySelector(".assistant-panel");
   const closeButton = dialog.querySelector("[data-assistant-close]");
-  const tabs = [...dialog.querySelectorAll("[data-assistant-tab]")];
   const messagesContainer = dialog.querySelector("[data-assistant-messages]");
   const feedback = dialog.querySelector("[data-assistant-feedback]");
   const composeForm = dialog.querySelector("[data-assistant-compose]");
-  const providerField = dialog.querySelector("[data-assistant-provider-field]");
   const textarea = dialog.querySelector("#assistant-input");
   const sendButton = composeForm?.querySelector("button[type='submit']");
   const sendLabel = dialog.querySelector("[data-assistant-send-label]");
@@ -27,7 +27,6 @@
   let returnFocus = null;
   let fetchController = null;
   let closeTimer = null;
-  let activeProvider = "openai";
 
   const setFeedback = (message = "", isError = false) => {
     if (!feedback) return;
@@ -84,12 +83,12 @@
     messagesContainer.replaceChildren(loading);
   };
 
-  const loadMessages = async provider => {
+  const loadMessages = async () => {
     fetchController?.abort();
     fetchController = new AbortController();
     renderLoading();
     try {
-      const response = await fetch(`/api/assistant/messages?provider=${encodeURIComponent(provider)}`, {
+      const response = await fetch(`/api/assistant/messages?provider=${PROVIDER}`, {
         credentials: "same-origin",
         headers: { Accept: "application/json" },
         signal: fetchController.signal
@@ -112,24 +111,13 @@
     }
   };
 
-  const selectTab = provider => {
-    if (!provider || provider === activeProvider) return;
-    activeProvider = provider;
-    if (providerField) providerField.value = provider;
-    tabs.forEach(tab => {
-      tab.setAttribute("aria-selected", String(tab.dataset.assistantTab === provider));
-    });
-    setFeedback("");
-    loadMessages(provider);
-  };
-
   const openDrawer = trigger => {
     if (dialog.open) return;
     window.clearTimeout(closeTimer);
     dialog.classList.remove("is-closing");
     returnFocus = trigger instanceof HTMLElement ? trigger : document.activeElement;
     dialog.showModal();
-    loadMessages(activeProvider);
+    loadMessages();
     window.requestAnimationFrame(() => textarea?.focus());
   };
 
@@ -188,10 +176,6 @@
     }
   });
 
-  tabs.forEach(tab => {
-    tab.addEventListener("click", () => selectTab(tab.dataset.assistantTab));
-  });
-
   composeForm?.addEventListener("submit", async event => {
     event.preventDefault();
     const value = textarea?.value.trim();
@@ -210,7 +194,7 @@
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || "Não foi possível enviar a mensagem.");
       if (textarea) textarea.value = "";
-      await loadMessages(activeProvider);
+      await loadMessages();
     } catch (error) {
       setFeedback(error.message || "Não foi possível enviar a mensagem.", true);
     } finally {

@@ -24,8 +24,6 @@ class Settings(BaseSettings):
     allowed_hosts: str = "localhost,127.0.0.1,testserver"
     log_level: str = "INFO"
     max_upload_size_mb: int = 15
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
 

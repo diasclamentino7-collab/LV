@@ -1,4 +1,4 @@
-"""Database-backed API for the multi-provider AI assistant drawer."""
+"""Database-backed API for the AI assistant drawer (Gemini's free tier)."""
 
 from __future__ import annotations
 
@@ -55,16 +55,14 @@ def message_payload(message: AssistantMessage) -> dict[str, object]:
     }
 
 
-def provider_credentials(settings: Settings, provider: str) -> tuple[str, str]:
-    if provider == "openai":
-        return settings.openai_api_key, settings.openai_model
+def provider_credentials(settings: Settings) -> tuple[str, str]:
     return settings.gemini_api_key, settings.gemini_model
 
 
 @router.get("/messages")
 def recent_messages(
     request: Request,
-    provider: str = Query("openai"),
+    provider: str = Query("gemini"),
 ) -> JSONResponse:
     if provider not in PROVIDERS:
         return error_response("Assistente desconhecido.", 404)
@@ -101,7 +99,7 @@ def send_message(
         return error_response("Escrevam uma mensagem.", 422)
 
     settings = get_settings()
-    api_key, model = provider_credentials(settings, provider)
+    api_key, model = provider_credentials(settings)
     if not api_key:
         label = PROVIDER_LABELS[provider]
         return error_response(

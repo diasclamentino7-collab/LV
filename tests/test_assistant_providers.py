@@ -8,8 +8,8 @@ from app.services.assistant_providers import AssistantError, send_chat_message
 
 
 def test_missing_api_key_is_rejected_before_any_call() -> None:
-    with pytest.raises(AssistantError, match="ChatGPT"):
-        send_chat_message("openai", "", "gpt-4o-mini", "system", [])
+    with pytest.raises(AssistantError, match="Gemini"):
+        send_chat_message("gemini", "", "gemini-2.0-flash", "system", [])
 
 
 def test_unknown_provider_is_rejected() -> None:
@@ -17,33 +17,21 @@ def test_unknown_provider_is_rejected() -> None:
         send_chat_message("made-up", "key", "model", "system", [])
 
 
-def test_openai_success_parses_reply(monkeypatch) -> None:
-    def fake_post(url, headers=None, json=None, timeout=None):
-        assert url == "https://api.openai.com/v1/chat/completions"
-        assert headers["Authorization"] == "Bearer sk-test"
-        assert json["messages"][0] == {"role": "system", "content": "system"}
-        return httpx.Response(200, json={"choices": [{"message": {"content": " Olá! "}}]})
-
-    monkeypatch.setattr(providers.httpx, "post", fake_post)
-    reply = send_chat_message("openai", "sk-test", "gpt-4o-mini", "system", [])
-    assert reply == "Olá!"
-
-
-def test_openai_http_error_status_raises_assistant_error(monkeypatch) -> None:
-    monkeypatch.setattr(
-        providers.httpx, "post", lambda *args, **kwargs: httpx.Response(500, json={"error": "boom"})
-    )
-    with pytest.raises(AssistantError, match="ChatGPT"):
-        send_chat_message("openai", "sk-test", "gpt-4o-mini", "system", [])
-
-
-def test_openai_network_failure_raises_assistant_error(monkeypatch) -> None:
+def test_gemini_network_failure_raises_assistant_error(monkeypatch) -> None:
     def raise_network_error(*args, **kwargs):
         raise httpx.ConnectError("no route")
 
     monkeypatch.setattr(providers.httpx, "post", raise_network_error)
-    with pytest.raises(AssistantError, match="ChatGPT"):
-        send_chat_message("openai", "sk-test", "gpt-4o-mini", "system", [])
+    with pytest.raises(AssistantError, match="Gemini"):
+        send_chat_message("gemini", "gem-test", "gemini-2.0-flash", "system", [])
+
+
+def test_gemini_http_error_status_raises_assistant_error(monkeypatch) -> None:
+    monkeypatch.setattr(
+        providers.httpx, "post", lambda *args, **kwargs: httpx.Response(500, json={"error": "boom"})
+    )
+    with pytest.raises(AssistantError, match="Gemini"):
+        send_chat_message("gemini", "gem-test", "gemini-2.0-flash", "system", [])
 
 
 def test_gemini_success_parses_reply(monkeypatch) -> None:

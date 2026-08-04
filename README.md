@@ -193,24 +193,21 @@ memória do navegador.
 ## Assistente de IA
 
 O ícone com o símbolo ✨ no cabeçalho abre um painel lateral com um assistente
-conversacional, com separadores para escolher entre ChatGPT e Gemini; cada
-separador mantém a sua própria conversa, guardada na base de dados e
-partilhada pelos dois utilizadores. Antes de responder, o assistente recebe
-um resumo apenas de leitura do casamento (orçamento, convidados e tarefas
-atuais) — nunca altera dados sozinho.
+conversacional (Gemini, usando a camada gratuita da Google). A conversa fica
+guardada na base de dados e é partilhada pelos dois utilizadores. Antes de
+responder, o assistente recebe um resumo apenas de leitura do casamento
+(orçamento, convidados e tarefas atuais) — nunca altera dados sozinho.
 
-Cada assistente precisa da respetiva chave de API, definida no `.env`:
+Precisa da chave de API do Gemini, definida no `.env`:
 
 ```env
-LV_OPENAI_API_KEY=
-LV_OPENAI_MODEL=gpt-4o-mini
 LV_GEMINI_API_KEY=
 LV_GEMINI_MODEL=gemini-2.0-flash
 ```
 
-Sem a chave correspondente, esse separador informa que ainda não está
-configurado; os restantes continuam a funcionar normalmente. As chaves nunca
-chegam ao navegador — todos os pedidos são feitos pelo servidor.
+Sem a chave, o assistente informa que ainda não está configurado; o resto da
+aplicação continua a funcionar normalmente. A chave nunca chega ao navegador
+— o pedido é sempre feito pelo servidor.
 
 ## Migrações e preservação de dados
 
