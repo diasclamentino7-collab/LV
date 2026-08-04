@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import httpx
 
-PROVIDERS = ("openai", "anthropic", "gemini")
-PROVIDER_LABELS = {"openai": "ChatGPT", "anthropic": "Claude", "gemini": "Gemini"}
+PROVIDERS = ("openai", "gemini")
+PROVIDER_LABELS = {"openai": "ChatGPT", "gemini": "Gemini"}
 REQUEST_TIMEOUT_SECONDS = 30.0
 MAX_REPLY_TOKENS = 700
 
@@ -32,8 +32,6 @@ def send_chat_message(
         raise AssistantError(f"A chave da API do {label} ainda não está configurada.")
     if provider == "openai":
         return _send_openai(api_key, model, system_prompt, history)
-    if provider == "anthropic":
-        return _send_anthropic(api_key, model, system_prompt, history)
     if provider == "gemini":
         return _send_gemini(api_key, model, system_prompt, history)
     raise AssistantError("Assistente desconhecido.")
@@ -63,39 +61,6 @@ def _send_openai(
         return response.json()["choices"][0]["message"]["content"].strip()
     except (KeyError, IndexError, TypeError, ValueError) as error:
         raise AssistantError("Resposta inesperada do ChatGPT.") from error
-
-
-def _send_anthropic(
-    api_key: str, model: str, system_prompt: str, history: list[dict[str, str]]
-) -> str:
-    import anthropic
-
-    client = anthropic.Anthropic(api_key=api_key)
-    try:
-        response = client.messages.create(
-            model=model,
-            max_tokens=MAX_REPLY_TOKENS,
-            system=system_prompt,
-            messages=history,
-        )
-    except anthropic.NotFoundError as error:
-        raise AssistantError("O modelo do Claude configurado não foi encontrado.") from error
-    except anthropic.RateLimitError as error:
-        raise AssistantError(
-            "O Claude está com muitos pedidos neste momento. Tentem novamente."
-        ) from error
-    except anthropic.APIStatusError as error:
-        raise AssistantError(
-            "O Claude não conseguiu responder. Tentem novamente em instantes."
-        ) from error
-    except anthropic.APIConnectionError as error:
-        raise AssistantError("Não foi possível contactar o Claude. Tentem novamente.") from error
-    if response.stop_reason == "refusal":
-        raise AssistantError("O Claude não conseguiu responder a este pedido.")
-    for block in response.content:
-        if block.type == "text":
-            return block.text.strip()
-    raise AssistantError("Resposta inesperada do Claude.")
 
 
 def _send_gemini(

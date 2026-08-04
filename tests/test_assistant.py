@@ -22,8 +22,6 @@ from app.services.security import hash_password
 class FakeSettings:
     openai_api_key = "sk-test-openai"
     openai_model = "gpt-4o-mini"
-    anthropic_api_key = "sk-test-anthropic"
-    anthropic_model = "claude-opus-5"
     gemini_api_key = "test-gemini-key"
     gemini_model = "gemini-2.0-flash"
 
@@ -126,7 +124,7 @@ def test_send_message_persists_conversation_and_calls_the_selected_provider(monk
         response = client.post(
             "/api/assistant/messages",
             data={
-                "provider": "anthropic",
+                "provider": "gemini",
                 "content": "Quanto orçamento resta?",
                 "csrf_token": token,
             },
@@ -136,16 +134,16 @@ def test_send_message_persists_conversation_and_calls_the_selected_provider(monk
         assert payload["ok"] is True
         assert payload["user_message"]["content"] == "Quanto orçamento resta?"
         assert payload["assistant_message"]["content"] == "O orçamento restante é 4200 EUR."
-        assert payload["assistant_message"]["provider"] == "anthropic"
+        assert payload["assistant_message"]["provider"] == "gemini"
 
         assert len(calls) == 1
-        assert calls[0]["provider"] == "anthropic"
-        assert calls[0]["api_key"] == "sk-test-anthropic"
-        assert calls[0]["model"] == "claude-opus-5"
+        assert calls[0]["provider"] == "gemini"
+        assert calls[0]["api_key"] == "test-gemini-key"
+        assert calls[0]["model"] == "gemini-2.0-flash"
         assert "Casal:" in calls[0]["system_prompt"]
         assert calls[0]["history"][-1] == {"role": "user", "content": "Quanto orçamento resta?"}
 
-        history_response = client.get("/api/assistant/messages?provider=anthropic")
+        history_response = client.get("/api/assistant/messages?provider=gemini")
         assert history_response.status_code == 200
         messages = history_response.json()["messages"]
         assert [m["role"] for m in messages] == ["user", "assistant"]
@@ -157,7 +155,7 @@ def test_send_message_persists_conversation_and_calls_the_selected_provider(monk
     with test_session() as db:
         stored = db.scalars(select(AssistantMessage)).all()
         assert len(stored) == 2
-        assert {row.provider for row in stored} == {"anthropic"}
+        assert {row.provider for row in stored} == {"gemini"}
 
 
 def test_provider_failure_does_not_persist_a_half_written_conversation(monkeypatch) -> None:

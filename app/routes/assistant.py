@@ -58,8 +58,6 @@ def message_payload(message: AssistantMessage) -> dict[str, object]:
 def provider_credentials(settings: Settings, provider: str) -> tuple[str, str]:
     if provider == "openai":
         return settings.openai_api_key, settings.openai_model
-    if provider == "anthropic":
-        return settings.anthropic_api_key, settings.anthropic_model
     return settings.gemini_api_key, settings.gemini_model
 
 

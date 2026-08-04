@@ -26,8 +26,6 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 15
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
-    anthropic_api_key: str = ""
-    anthropic_model: str = "claude-opus-5"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
 
