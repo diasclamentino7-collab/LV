@@ -94,4 +94,10 @@ def test_shell_javascript_preserves_mobile_focus_and_truthful_state() -> None:
     assert 'scrollIntoView({' in javascript
     assert "innerHTML" not in javascript
     assert "localStorage" not in javascript
-    assert "setTimeout" not in javascript
+
+    # A submitted form must never stay disabled forever: a real network
+    # failure that doesn't trigger a page navigation has to release the
+    # button again, so the one legitimate `setTimeout` here is a watchdog,
+    # not a fake/simulated delay.
+    assert "SUBMIT_LOCK_TIMEOUT_MS" in javascript
+    assert "releaseSubmitLock" in javascript

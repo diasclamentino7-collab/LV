@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/motion.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/auth.css') }}">
-    {% if theme is defined %}<style>:root{--primary:{{ theme.primary }};--primary-soft:{{ theme.secondary }};--accent:{{ theme.accent }};--background:{{ theme.background }};{% if theme.on_primary is defined %}--on-primary:{{ theme.on_primary }};{% endif %}}</style>{% endif %}
+    {% if theme is defined %}<style>:root{--primary:{{ theme.primary }};--primary-soft:{{ theme.secondary }};--accent:{{ theme.accent }};--background:{{ theme.background }};{% if theme.on_primary is defined %}--on-primary:{{ theme.on_primary }};{% endif %}{% if theme.on_background is defined %}--text:{{ theme.on_background }};--ink-strong:{{ theme.on_background }};--muted:color-mix(in srgb, {{ theme.on_background }} 68%, {{ theme.background }});{% endif %}}</style>{% endif %}
     <script src="{{ url_for('static', path='js/motion.js') }}" defer></script>
     <script src="{{ url_for('static', path='js/app.js') }}" defer></script>
     <script src="{{ url_for('static', path='js/auth.js') }}" defer></script>
@@ -48,6 +48,7 @@
         </header>
         <main id="auth-content" class="auth-card {% block card_class %}{% endblock %}" data-motion-page>
           {% block content %}{% endblock %}
+          <p class="auth-form-note auth-wait-hint" data-auth-wait-hint aria-live="polite" hidden><span aria-hidden="true">◈</span> Ainda a ligar ao servidor… Depois de um período sem visitas, a primeira ligação pode demorar até um minuto.</p>
         </main>
         <footer class="auth-stage-footer">LV Wedding Planner <span aria-hidden="true">·</span> Planeado com carinho</footer>
       </section>

@@ -45,21 +45,52 @@ if (authPage) {
     input.addEventListener("input", updateStrength);
   }
 
+  const WAIT_HINT_DELAY_MS = 4000;
+  const SUBMIT_LOCK_TIMEOUT_MS = 20000;
+  const waitHint = authPage.querySelector("[data-auth-wait-hint]");
+  const originalSubmitLabels = new WeakMap();
+  let activeSubmitter = null;
+
+  const resetSubmitter = () => {
+    if (waitHint) waitHint.hidden = true;
+    if (!activeSubmitter) return;
+    activeSubmitter.removeAttribute("aria-busy");
+    const label = activeSubmitter.querySelector("[data-submit-label]");
+    if (label && originalSubmitLabels.has(label)) label.textContent = originalSubmitLabels.get(label);
+    activeSubmitter = null;
+  };
+
   for (const form of authPage.querySelectorAll("[data-auth-form]")) {
     form.addEventListener("submit", (event) => {
-      if (form.dataset.submitting === "true") {
-        event.preventDefault();
-        return;
-      }
-      if (!form.checkValidity()) return;
+      if (form.dataset.submitting === "true" || !form.checkValidity()) return;
 
-      form.dataset.submitting = "true";
       const submitter = event.submitter;
       if (!submitter) return;
       submitter.setAttribute("aria-busy", "true");
-      submitter.setAttribute("aria-disabled", "true");
       const label = submitter.querySelector("[data-submit-label]");
-      if (label) label.textContent = "A processar…";
+      if (label) {
+        if (!originalSubmitLabels.has(label)) originalSubmitLabels.set(label, label.textContent);
+        label.textContent = "A processar…";
+      }
+      activeSubmitter = submitter;
+
+      // Purely a truthful signal: this only ever appears after real elapsed
+      // time with no server response yet, not a simulated delay. It exists
+      // so a slow free-tier cold start reads as "ainda a ligar", not as a
+      // frozen page.
+      if (waitHint) {
+        window.setTimeout(() => {
+          if (activeSubmitter === submitter) waitHint.hidden = false;
+        }, WAIT_HINT_DELAY_MS);
+      }
+      // Safety net matching app.js's form-lock watchdog: if the expected
+      // navigation never happens, this stops the button from claiming
+      // forever that it's still processing.
+      window.setTimeout(() => {
+        if (activeSubmitter === submitter) resetSubmitter();
+      }, SUBMIT_LOCK_TIMEOUT_MS);
     });
   }
+
+  window.addEventListener("pageshow", resetSubmitter);
 }

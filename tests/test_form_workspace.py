@@ -136,6 +136,85 @@ def test_every_canonical_module_keeps_create_and_edit_workflows(monkeypatch):
             assert "Tudo guardado" in edit_page.text, slug
 
 
+def test_concurrent_module_edit_conflict_is_detected_and_does_not_overwrite(monkeypatch):
+    testing_session, user_id, category_id, vendor_id = form_test_session(monkeypatch)
+    slug = "vendors"
+    spec = MODULES[slug]
+
+    def base_payload() -> dict[str, str]:
+        return {
+            field.name: field_value(field, slug, category_id, vendor_id) for field in spec.fields
+        }
+
+    with TestClient(app) as client:
+        login(client, user_id)
+        new_page = client.get(f"/{slug}/new")
+        payload = base_payload()
+        payload["company"] = "Fornecedor original"
+        payload["csrf_token"] = csrf_from(new_page)
+        client.post(f"/{slug}/new", data=payload, follow_redirects=False)
+
+        with testing_session() as db:
+            record = db.scalars(select(Vendor).order_by(Vendor.id.desc())).first()
+            assert record is not None
+            record_id = record.id
+
+        # Two "tabs" open the same edit form before either one saves.
+        tab_a = client.get(f"/{slug}/{record_id}/edit")
+        tab_b = client.get(f"/{slug}/{record_id}/edit")
+        stale_expected = re.search(
+            r'name="expected_updated_at" value="([^"]*)"', tab_a.text
+        ).group(1)
+        assert stale_expected
+
+        payload_a = base_payload()
+        payload_a["company"] = "Fornecedor A"
+        payload_a["csrf_token"] = csrf_from(tab_a)
+        payload_a["expected_updated_at"] = stale_expected
+        edit_url = f"/{slug}/{record_id}/edit"
+        first_save = client.post(edit_url, data=payload_a, follow_redirects=False)
+        assert first_save.status_code == 303
+        assert first_save.headers["location"] == f"/{slug}?message=updated"
+
+        # Tab B still holds the pre-edit timestamp and tries to save afterwards.
+        payload_b = base_payload()
+        payload_b["company"] = "Fornecedor B (versão desatualizada)"
+        payload_b["csrf_token"] = csrf_from(tab_b)
+        payload_b["expected_updated_at"] = stale_expected
+        second_save = client.post(edit_url, data=payload_b, follow_redirects=False)
+        assert second_save.status_code == 303
+        assert second_save.headers["location"] == f"{edit_url}?error=conflict"
+
+        with testing_session() as db:
+            stored = db.get(Vendor, record_id)
+            assert stored is not None
+            assert stored.company == "Fornecedor A"
+
+
+def test_invalid_number_field_is_rejected_instead_of_silently_zeroed(monkeypatch):
+    testing_session, user_id, category_id, vendor_id = form_test_session(monkeypatch)
+    slug = "vendors"
+    spec = MODULES[slug]
+
+    with TestClient(app) as client:
+        login(client, user_id)
+        new_page = client.get(f"/{slug}/new")
+        payload = {
+            field.name: field_value(field, slug, category_id, vendor_id) for field in spec.fields
+        }
+        payload["agreed_price"] = "not-a-number"
+        payload["csrf_token"] = csrf_from(new_page)
+        response = client.post(f"/{slug}/new", data=payload, follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers["location"] == f"/{slug}/new?error=invalid"
+
+        with testing_session() as db:
+            # form_test_session already seeds one base vendor fixture; a
+            # rejected submission must not add a second row with a
+            # silently-zeroed price.
+            assert db.scalars(select(Vendor)).all() == [db.get(Vendor, vendor_id)]
+
+
 def test_form_workspace_has_keyboard_safety_without_background_business_writes():
     javascript = (PROJECT_ROOT / "app/static/js/form-workspace.js").read_text(encoding="utf-8")
     stylesheet = (PROJECT_ROOT / "app/static/css/form-workspace.css").read_text(encoding="utf-8")

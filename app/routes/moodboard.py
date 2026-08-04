@@ -508,6 +508,17 @@ def save_inspiration_placement(
         return JSONResponse({"ok": False, "error": "authentication"}, status_code=401)
     if not valid_csrf_token(request, csrf_token):
         return JSONResponse({"ok": False, "error": "csrf"}, status_code=403)
+    def apply_placement_fields(target: MoodboardInspirationPlacement) -> None:
+        target.x_percent = clamp_number(x_percent, 0.0, PLACEMENT_X_LIMIT)
+        target.y_percent = clamp_number(y_percent, 0.0, PLACEMENT_Y_LIMIT)
+        target.rotation_degrees = clamp_number(
+            rotation_degrees,
+            -PLACEMENT_ROTATION_LIMIT,
+            PLACEMENT_ROTATION_LIMIT,
+        )
+        target.layer = max(1, min(layer, PLACEMENT_LAYER_LIMIT))
+        target.updated_by_id = owner_id
+
     with SessionLocal() as db:
         item = db.get(MoodboardItem, item_id)
         if item is None or item.is_archived:
@@ -517,18 +528,11 @@ def save_inspiration_placement(
                 MoodboardInspirationPlacement.item_id == item_id
             )
         )
+        is_new = placement is None
         if placement is None:
             placement = default_placement(0, owner_id, item_id)
             db.add(placement)
-        placement.x_percent = clamp_number(x_percent, 0.0, PLACEMENT_X_LIMIT)
-        placement.y_percent = clamp_number(y_percent, 0.0, PLACEMENT_Y_LIMIT)
-        placement.rotation_degrees = clamp_number(
-            rotation_degrees,
-            -PLACEMENT_ROTATION_LIMIT,
-            PLACEMENT_ROTATION_LIMIT,
-        )
-        placement.layer = max(1, min(layer, PLACEMENT_LAYER_LIMIT))
-        placement.updated_by_id = owner_id
+        apply_placement_fields(placement)
         record_activity(
             db,
             owner_id,
@@ -536,7 +540,33 @@ def save_inspiration_placement(
             f"reposicionou inspiração: {item.title}",
             "moodboard",
         )
-        db.commit()
+        if is_new:
+            try:
+                db.commit()
+            except IntegrityError:
+                # Two collaborators may drag the same never-before-placed item
+                # at the same time; the unique constraint on item_id keeps one
+                # row. Re-apply this move on top of the winning row instead of
+                # silently dropping it.
+                db.rollback()
+                placement = db.scalar(
+                    select(MoodboardInspirationPlacement).where(
+                        MoodboardInspirationPlacement.item_id == item_id
+                    )
+                )
+                if placement is None:
+                    return JSONResponse({"ok": False, "error": "conflict"}, status_code=409)
+                apply_placement_fields(placement)
+                record_activity(
+                    db,
+                    owner_id,
+                    "organizou",
+                    f"reposicionou inspiração: {item.title}",
+                    "moodboard",
+                )
+                db.commit()
+        else:
+            db.commit()
         payload = {
             "ok": True,
             "x": placement.x_percent,

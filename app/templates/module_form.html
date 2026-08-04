@@ -24,9 +24,11 @@
     </div>
     {% endif %}
   </section>
-  {% if request.query_params.get('error') %}<div class="form-workspace-alert form-error" role="alert"><span aria-hidden="true">!</span><div><strong>Não foi possível guardar.</strong><p>Revejam os campos assinalados e confirmem que não existe outro registo com o mesmo nome.</p></div></div>{% endif %}
+  {% if request.query_params.get('error') == 'conflict' %}<div class="form-workspace-alert form-error" role="alert"><span aria-hidden="true">!</span><div><strong>Este registo foi alterado noutra sessão.</strong><p>Voltem a abrir o registo para ver a versão mais recente antes de guardar de novo, para não perderem essa alteração.</p></div></div>
+  {% elif request.query_params.get('error') %}<div class="form-workspace-alert form-error" role="alert"><span aria-hidden="true">!</span><div><strong>Não foi possível guardar.</strong><p>Revejam os campos assinalados e confirmem que não existe outro registo com o mesmo nome.</p></div></div>{% endif %}
   <form method="post" class="record-form form-workspace" data-form-workspace data-cancel-url="/{{ module.slug }}" data-form-mode="{{ 'edit' if is_editing else 'create' }}" aria-busy="false">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if is_editing %}<input type="hidden" name="expected_updated_at" value="{{ record.updated_at.isoformat() if record.updated_at else '' }}">{% endif %}
     <section class="form-command-bar" aria-label="Estado e ações do formulário">
       <div class="form-save-status" data-form-status data-state="clean" role="status" aria-live="polite">
         <span class="form-status-dot" aria-hidden="true"></span>

@@ -70,7 +70,12 @@ def test_auth_assets_are_responsive_accessible_and_progressive() -> None:
     assert "innerHTML" not in javascript
     assert "localStorage" not in javascript
     assert "sessionStorage" not in javascript
-    assert "setTimeout" not in javascript
+
+    # A submit that never navigates away must still tell the truth about
+    # what's happening (e.g. a free-tier cold start): the one legitimate
+    # `setTimeout` here reveals a "still connecting" hint purely from real
+    # elapsed time, not a simulated/fake delay.
+    assert "data-auth-wait-hint" in javascript
 
     assert '"/static/css/auth.css"' in service_worker
     assert '"/static/js/auth.js"' in service_worker

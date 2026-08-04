@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -23,6 +23,7 @@ from app.services.activity import record_activity
 from app.services.auth_session import authenticated_user
 from app.services.budget import budget_snapshot, serialize_budget_snapshot
 from app.services.csrf import valid_csrf_token
+from app.services.guests import timestamp_matches
 from app.services.record_deletion import create_tombstone, is_tombstoned, not_tombstoned
 from app.services.table_plan import (
     MAX_TABLE_CAPACITY,
@@ -311,8 +312,8 @@ def value_for(field: Field, raw: str) -> Any:
     if field.kind == "number":
         try:
             return Decimal(raw.replace(",", "."))
-        except InvalidOperation:
-            return Decimal("0")
+        except InvalidOperation as error:
+            raise ValueError(f"O campo {field.label} deve ser um número válido.") from error
     if field.kind == "integer":
         normalized = raw.strip().replace(",", ".")
         if len(normalized) > 12 or "e" in normalized.casefold():
@@ -653,9 +654,15 @@ async def update_record(request: Request, slug: str, record_id: int) -> Redirect
     values = {key: str(value) for key, value in (await request.form()).items()}
     if not valid_csrf_token(request, values.pop("csrf_token", "")):
         return RedirectResponse(f"/{slug}/{record_id}/edit?error=csrf", status_code=303)
+    expected_updated_at = values.pop("expected_updated_at", "")
     with SessionLocal() as db:
         record = record_for(spec, db, record_id)
         if record is not None:
+            if not timestamp_matches(record.updated_at, expected_updated_at):
+                return RedirectResponse(
+                    f"/{slug}/{record_id}/edit?error=conflict",
+                    status_code=303,
+                )
             try:
                 previous_table_name = (
                     clean_table_name(record.title) if spec.slug == "table-plan" else ""
@@ -673,6 +680,11 @@ async def update_record(request: Request, slug: str, record_id: int) -> Redirect
                     )
                 user_id = logged_user_id(request)
                 record.updated_by_id = user_id
+                # Set explicitly (rather than relying on the column's
+                # DB-side onupdate) so the timestamp has enough resolution
+                # for the conflict check above to reliably tell two edits
+                # apart, matching the guest list's own concurrency check.
+                record.updated_at = datetime.now(UTC)
                 if spec.slug == "table-plan":
                     sync_table_name_assignments(
                         db,

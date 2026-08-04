@@ -52,10 +52,12 @@ def project_template_context(request: Request) -> dict[str, Any]:
                     "accent": "#C9A46A",
                     "background": "#FAF8F6",
                     "on_primary": "#333333",
+                    "on_background": "#333333",
                 },
                 "currency_symbol": "€",
             }
         primary = safe_color(settings.primary_color, "#D88BA7")
+        background = safe_color(settings.background_color, "#FAF8F6")
         context = {
             "csrf_token": get_csrf_token(request),
             "ui_settings": settings,
@@ -64,8 +66,9 @@ def project_template_context(request: Request) -> dict[str, Any]:
                 "primary": primary,
                 "secondary": safe_color(settings.secondary_color, "#F8DCE8"),
                 "accent": safe_color(settings.accent_color, "#C9A46A"),
-                "background": safe_color(settings.background_color, "#FAF8F6"),
+                "background": background,
                 "on_primary": contrast_text(primary),
+                "on_background": contrast_text(background),
             },
             "currency_symbol": CURRENCY_SYMBOLS.get(settings.currency, settings.currency),
         }

@@ -174,6 +174,62 @@ def test_inspiration_table_persists_bounded_positions_and_favorites(monkeypatch)
             )
 
 
+def test_concurrent_first_placement_keeps_both_writes_instead_of_500(monkeypatch) -> None:
+    client, test_session, user_id = moodboard_client(monkeypatch)
+    with client:
+        login(client, user_id)
+        page = client.get("/moodboard")
+        token = csrf_from(page.text)
+
+        with test_session() as db:
+            item = db.scalars(select(MoodboardItem).order_by(MoodboardItem.id)).first()
+            item_id = item.id
+            # Simulate this item never having been placed yet (the state two
+            # collaborators would both see if they open the board for the
+            # very first time at the same moment).
+            db.query(MoodboardInspirationPlacement).filter_by(item_id=item_id).delete()
+            db.commit()
+
+        original_default_placement = moodboard_routes.default_placement
+
+        def racing_default_placement(index, owner_id, placement_item_id):
+            if placement_item_id == item_id:
+                # A second collaborator's request wins the race and commits
+                # its own placement row first, from a separate session.
+                with test_session() as other_db:
+                    other_db.add(original_default_placement(0, owner_id, placement_item_id))
+                    other_db.commit()
+            return original_default_placement(index, owner_id, placement_item_id)
+
+        monkeypatch.setattr(moodboard_routes, "default_placement", racing_default_placement)
+
+        response = client.post(
+            f"/moodboard/{item_id}/placement",
+            data={
+                "csrf_token": token,
+                "x_percent": "40",
+                "y_percent": "30",
+                "rotation_degrees": "5",
+                "layer": "3",
+            },
+            headers={"X-Requested-With": "lv-moodboard"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
+
+        with test_session() as db:
+            placements = db.scalars(
+                select(MoodboardInspirationPlacement).where(
+                    MoodboardInspirationPlacement.item_id == item_id
+                )
+            ).all()
+            # The unique constraint keeps exactly one row, and it must carry
+            # this request's move rather than silently losing it to a 500.
+            assert len(placements) == 1
+            assert (placements[0].x_percent, placements[0].y_percent) == (40.0, 30.0)
+
+
 def test_accessible_reorder_keeps_items_and_changes_custom_order(monkeypatch) -> None:
     client, test_session, user_id = moodboard_client(monkeypatch)
     with client:

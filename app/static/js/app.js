@@ -207,6 +207,21 @@
     }
   });
 
+  const SUBMIT_LOCK_TIMEOUT_MS = 20000;
+
+  const releaseSubmitLock = form => {
+    if (form.dataset.submitLockTimer) {
+      window.clearTimeout(Number(form.dataset.submitLockTimer));
+      delete form.dataset.submitLockTimer;
+    }
+    delete form.dataset.submitting;
+    form.removeAttribute("aria-busy");
+    form.querySelectorAll(".is-submitting").forEach(control => {
+      control.classList.remove("is-submitting");
+      control.removeAttribute("aria-disabled");
+    });
+  };
+
   document.addEventListener("submit", event => {
     if (event.defaultPrevented || !(event.target instanceof HTMLFormElement)) return;
     const form = event.target;
@@ -223,17 +238,15 @@
         window.LVMotion.buttonSuccess(control);
       }
     });
+    // Safety net: if a slow/dropped connection prevents the expected page
+    // navigation, this releases the button instead of leaving the form stuck
+    // on "A processar…" forever with no way to retry.
+    const timerId = window.setTimeout(() => releaseSubmitLock(form), SUBMIT_LOCK_TIMEOUT_MS);
+    form.dataset.submitLockTimer = String(timerId);
   });
 
   window.addEventListener("pageshow", () => {
-    document.querySelectorAll('form[data-submitting="true"]').forEach(form => {
-      delete form.dataset.submitting;
-      form.removeAttribute("aria-busy");
-      form.querySelectorAll(".is-submitting").forEach(control => {
-        control.classList.remove("is-submitting");
-        control.removeAttribute("aria-disabled");
-      });
-    });
+    document.querySelectorAll('form[data-submitting="true"]').forEach(releaseSubmitLock);
   });
 
   const announceServerFeedback = () => {

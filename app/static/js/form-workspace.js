@@ -1,6 +1,8 @@
 (() => {
   "use strict";
 
+  const SUBMIT_LOCK_TIMEOUT_MS = 20000;
+
   const controlsFor = form => [...form.querySelectorAll("[data-form-control]")]
     .filter(control => !control.disabled && Boolean(control.name));
 
@@ -91,6 +93,7 @@
     let dirty = false;
     let submitting = false;
     let leaving = false;
+    let submitLockTimer = 0;
 
     const setStatus = (state, label, detail) => {
       if (status) status.dataset.state = state;
@@ -199,6 +202,20 @@
       if (confirmCancel()) window.location.assign(cancelUrl);
     });
 
+    const releaseSubmitLock = () => {
+      if (submitLockTimer) {
+        window.clearTimeout(submitLockTimer);
+        submitLockTimer = 0;
+      }
+      if (!submitting) return;
+      submitting = false;
+      form.setAttribute("aria-busy", "false");
+      initialSubmitLabels.forEach((label, element) => {
+        element.textContent = label;
+      });
+      updateDirtyState();
+    };
+
     form.addEventListener("submit", event => {
       if (!validateForm()) {
         event.preventDefault();
@@ -211,6 +228,11 @@
         label.textContent = "A guardar…";
       });
       setStatus("saving", "A guardar…", "A enviar diretamente para a base de dados");
+      // Safety net: if a slow/dropped connection prevents the expected page
+      // navigation, this releases the form instead of leaving it stuck on
+      // "A guardar…" forever with the unsaved-changes warning silently
+      // disabled.
+      submitLockTimer = window.setTimeout(releaseSubmitLock, SUBMIT_LOCK_TIMEOUT_MS);
     });
 
     window.addEventListener("beforeunload", event => {
@@ -220,6 +242,10 @@
     });
 
     window.addEventListener("pageshow", () => {
+      if (submitLockTimer) {
+        window.clearTimeout(submitLockTimer);
+        submitLockTimer = 0;
+      }
       if (submitting) initialSnapshot = formSnapshot(form);
       submitting = false;
       leaving = false;
