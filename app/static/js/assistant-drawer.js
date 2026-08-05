@@ -176,6 +176,12 @@
     }
   });
 
+  textarea?.addEventListener("keydown", event => {
+    if (event.key !== "Enter" || event.shiftKey) return;
+    event.preventDefault();
+    composeForm?.requestSubmit();
+  });
+
   composeForm?.addEventListener("submit", async event => {
     event.preventDefault();
     const value = textarea?.value.trim();

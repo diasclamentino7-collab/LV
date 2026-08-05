@@ -202,17 +202,33 @@ Leonor não se misturam).
 Antes de responder, o assistente recebe um resumo apenas de leitura do
 casamento (orçamento por categoria, convidados, tarefas, fornecedores e
 documentos legais — sem contactos de terceiros nem notas confidenciais). Além
-disso, o assistente pode **executar ações reais** através de ferramentas:
+disso, o assistente pode **executar ações reais** através de ferramentas, em
+praticamente todos os módulos da aplicação:
 
-- adicionar, atualizar ou remover convidados, tarefas e fornecedores;
+- convidados, tarefas, fornecedores, documentos legais, categorias de
+  orçamento, despesas, pagamentos, notas de comunicação e inspirações do
+  moodboard — criar, atualizar e remover;
 - ir buscar o conteúdo de uma página da internet (`fetch_webpage`), por
-  exemplo quando lhe é dado o link de um fornecedor.
+  exemplo quando lhe é dado o link de um fornecedor;
+- um pedido com vários itens (ex.: uma lista de convidados) é processado
+  item a item, sem pararem a meio.
 
 "Remover" arquiva o registo (`is_archived`) em vez de o apagar de vez — segue
 o mesmo padrão de eliminação reversível do resto da aplicação — e cada ação
-fica registada na atividade da conta com o autor certo. O assistente nunca
-inventa dados que faltam: se um pedido for ambíguo ou incompleto, pergunta
-antes de agir.
+fica registada na atividade da conta com o autor certo. Existe ainda uma
+ferramenta separada de eliminação **definitiva** (`permanently_delete_record`,
+o equivalente a escrever "APAGAR" na aplicação): só atua sobre um registo já
+arquivado e só depois de o casal confirmar claramente, na própria conversa,
+que querem apagar para sempre — em caso de dúvida, o assistente arquiva e
+pergunta em vez de apagar. O assistente nunca inventa dados que faltam: se um
+pedido for ambíguo ou incompleto, pergunta antes de agir.
+
+Com tantas ferramentas disponíveis, cada pedido ao Groq carrega um esquema
+maior — o que consome mais rapidamente o limite gratuito de tokens por
+minuto. Em pedidos muito seguidos ou muito grandes (dezenas de itens de
+uma vez), o assistente pode responder "O Groq não conseguiu responder.
+Tentem novamente em instantes." — não é um erro, é o limite do nível
+gratuito; esperar meio minuto e tentar de novo resolve.
 
 A chave é criada gratuitamente em [console.groq.com/keys](https://console.groq.com/keys)
 e definida no `.env`:

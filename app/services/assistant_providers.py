@@ -18,7 +18,7 @@ PROVIDERS = ("groq",)
 PROVIDER_LABELS = {"groq": "Groq"}
 REQUEST_TIMEOUT_SECONDS = 30.0
 MAX_REPLY_TOKENS = 900
-MAX_TOOL_ROUNDS = 6
+MAX_TOOL_ROUNDS = 10
 
 ToolExecutor = Callable[[str, dict[str, Any]], dict[str, Any]]
 

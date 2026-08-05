@@ -163,9 +163,16 @@
 
 .assistant-compose {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 9px;
   margin-top: 8px;
+}
+.assistant-compose-hint {
+  flex-basis: 100%;
+  margin: 2px 1px 0;
+  color: var(--text-muted, #8a7f7f);
+  font-size: 10px;
 }
 .assistant-compose textarea {
   flex: 1;
