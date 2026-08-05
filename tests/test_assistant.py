@@ -217,9 +217,7 @@ def test_each_user_gets_their_own_private_conversation(monkeypatch) -> None:
     client, test_session, vitor_id = assistant_client(monkeypatch)
     ana_id = add_second_user(test_session)
 
-    monkeypatch.setattr(
-        assistant_routes, "send_chat_message", lambda *args, **kwargs: "resposta"
-    )
+    monkeypatch.setattr(assistant_routes, "send_chat_message", lambda *args, **kwargs: "resposta")
 
     with client:
         login(client, vitor_id)
@@ -273,8 +271,11 @@ def test_assistant_can_actually_add_a_guest_end_to_end(monkeypatch) -> None:
                                     "id": "call_1",
                                     "type": "function",
                                     "function": {
-                                        "name": "add_guest",
-                                        "arguments": '{"name": "Bruna", "side": "Noiva"}',
+                                        "name": "create_record",
+                                        "arguments": (
+                                            '{"module": "guest", '
+                                            '"fields": {"name": "Bruna", "side": "Noiva"}}'
+                                        ),
                                     },
                                 }
                             ],
@@ -318,8 +319,6 @@ def test_assistant_can_actually_add_a_guest_end_to_end(monkeypatch) -> None:
         assert guest.side == "Noiva"
         assert guest.created_by_id == user_id
 
-        activity = db.scalar(
-            select(Activity).where(Activity.description.ilike("%Bruna%"))
-        )
+        activity = db.scalar(select(Activity).where(Activity.description.ilike("%Bruna%")))
         assert activity is not None
         assert activity.user_id == user_id

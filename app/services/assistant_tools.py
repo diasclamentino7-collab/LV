@@ -93,6 +93,35 @@ def _parse_amount(value: object) -> Decimal:
         return Decimal("0")
 
 
+def _match_enum(value: object, options: tuple[str, ...]) -> str | None:
+    """Match a model-supplied value against an enum, tolerating how it was written.
+
+    The generic dispatcher tools no longer carry per-field JSON-schema enums
+    (that was most of the token cost we cut), so the model may send
+    differently-cased values (e.g. "noivo" instead of "Noivo") or, in
+    Portuguese, a grammatically gender-agreed form of a fixed-form status
+    (e.g. "confirmada" for a female guest, when the app's enum value is the
+    invariant "Confirmado"). Without this, those would silently fail an
+    exact-match check and the field would just be dropped.
+    """
+
+    if not isinstance(value, str):
+        return None
+    lowered = value.strip().lower()
+    # Exact matches always win, across *all* options, before any fuzzy
+    # gender-swap attempt — "Noivo" and "Noiva" are both real, distinct
+    # options (not gendered forms of each other), so an exact match on one
+    # must never lose to a fuzzy match against the other.
+    for option in options:
+        if lowered == option.lower():
+            return option
+    for option in options:
+        option_lower = option.lower()
+        if (lowered[:-1] == option_lower[:-1]) and {lowered[-1:], option_lower[-1:]} <= {"a", "o"}:
+            return option
+    return None
+
+
 def _find_guest(db: Session, name: str) -> Guest | None:
     return db.scalar(select(Guest).where(*active_guest_condition(), Guest.name.ilike(name.strip())))
 
@@ -199,15 +228,9 @@ def add_guest(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any]:
         return {"ok": False, "error": "É preciso um nome para adicionar um convidado."}
     if _find_guest(db, name) is not None:
         return {"ok": False, "error": f"Já existe um convidado chamado {name}."}
-    side = args.get("side") or ""
-    if side and side not in SIDES:
-        side = ""
-    rsvp_status = args.get("rsvp_status") or "Pendente"
-    if rsvp_status not in RSVP_STATUSES:
-        rsvp_status = "Pendente"
-    age_group = args.get("age_group") or "Adulto"
-    if age_group not in AGE_GROUPS:
-        age_group = "Adulto"
+    side = _match_enum(args.get("side"), SIDES) or ""
+    rsvp_status = _match_enum(args.get("rsvp_status"), RSVP_STATUSES) or "Pendente"
+    age_group = _match_enum(args.get("age_group"), AGE_GROUPS) or "Adulto"
     guest = Guest(
         name=name,
         side=side,
@@ -230,12 +253,15 @@ def update_guest(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any
     guest = _find_guest(db, name) if name else None
     if guest is None:
         return {"ok": False, "error": f"Não encontrei nenhum convidado ativo chamado {name}."}
-    if args.get("rsvp_status") in RSVP_STATUSES:
-        guest.rsvp_status = args["rsvp_status"]
-    if args.get("side") in SIDES:
-        guest.side = args["side"]
-    if args.get("age_group") in AGE_GROUPS:
-        guest.age_group = args["age_group"]
+    matched_rsvp_status = _match_enum(args.get("rsvp_status"), RSVP_STATUSES)
+    if matched_rsvp_status:
+        guest.rsvp_status = matched_rsvp_status
+    matched_side = _match_enum(args.get("side"), SIDES)
+    if matched_side:
+        guest.side = matched_side
+    matched_age_group = _match_enum(args.get("age_group"), AGE_GROUPS)
+    if matched_age_group:
+        guest.age_group = matched_age_group
     if args.get("table_name") is not None:
         guest.table_name = str(args["table_name"])
     if args.get("dietary_requirements") is not None:
@@ -277,12 +303,8 @@ def add_task(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any]:
     title = str(args.get("title", "")).strip()
     if not title:
         return {"ok": False, "error": "É preciso um título para criar uma tarefa."}
-    priority = args.get("priority") or "Média"
-    if priority not in TASK_PRIORITIES:
-        priority = "Média"
-    status = args.get("status") or "Pendente"
-    if status not in TASK_STATUSES:
-        status = "Pendente"
+    priority = _match_enum(args.get("priority"), TASK_PRIORITIES) or "Média"
+    status = _match_enum(args.get("status"), TASK_STATUSES) or "Pendente"
     task = Task(
         title=title,
         category=str(args.get("category", "") or ""),
@@ -305,14 +327,16 @@ def update_task(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any]
     if task is None:
         return {"ok": False, "error": f"Não encontrei nenhuma tarefa ativa chamada '{title}'."}
     if args.get("status") is not None:
-        if args["status"] not in TASK_STATUSES:
+        matched_status = _match_enum(args.get("status"), TASK_STATUSES)
+        if not matched_status:
             return {
                 "ok": False,
                 "error": f"Estado inválido; use um de: {', '.join(TASK_STATUSES)}.",
             }
-        task.status = args["status"]
-    if args.get("priority") in TASK_PRIORITIES:
-        task.priority = args["priority"]
+        task.status = matched_status
+    matched_priority = _match_enum(args.get("priority"), TASK_PRIORITIES)
+    if matched_priority:
+        task.priority = matched_priority
     if args.get("description") is not None:
         task.description = str(args["description"])
     if args.get("category") is not None:
@@ -445,9 +469,7 @@ def add_legal_document(db: Session, user: User, args: dict[str, Any]) -> dict[st
         return {"ok": False, "error": "É preciso um título para o documento."}
     if _find_legal_document(db, title) is not None:
         return {"ok": False, "error": f"Já existe um documento legal chamado {title}."}
-    status = args.get("status") or "Pendente"
-    if status not in LEGAL_STATUSES:
-        status = "Pendente"
+    status = _match_enum(args.get("status"), LEGAL_STATUSES) or "Pendente"
     document = LegalDocument(
         document_type=str(args.get("document_type", "") or "Documento"),
         title=title,
@@ -476,8 +498,9 @@ def update_legal_document(db: Session, user: User, args: dict[str, Any]) -> dict
         }
     if args.get("document_type") is not None:
         document.document_type = str(args["document_type"])
-    if args.get("status") in LEGAL_STATUSES:
-        document.status = args["status"]
+    matched_status = _match_enum(args.get("status"), LEGAL_STATUSES)
+    if matched_status:
+        document.status = matched_status
     if "due_date" in args:
         document.due_date = _parse_date(args.get("due_date"))
     if args.get("responsible") is not None:
@@ -628,9 +651,7 @@ def add_expense(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any]
                 "ok": False,
                 "error": f"Não encontrei nenhum fornecedor ativo chamado '{vendor_name}'.",
             }
-    status = args.get("status") or "Pendente"
-    if status not in EXPENSE_STATUSES:
-        status = "Pendente"
+    status = _match_enum(args.get("status"), EXPENSE_STATUSES) or "Pendente"
     expense = Expense(
         category_id=category.id,
         vendor_id=vendor.id if vendor else None,
@@ -689,8 +710,9 @@ def update_expense(db: Session, user: User, args: dict[str, Any]) -> dict[str, A
         parsed = _parse_date(args["expense_date"])
         if parsed:
             expense.expense_date = parsed
-    if args.get("status") in EXPENSE_STATUSES:
-        expense.status = args["status"]
+    matched_status = _match_enum(args.get("status"), EXPENSE_STATUSES)
+    if matched_status:
+        expense.status = matched_status
     if args.get("notes") is not None:
         expense.notes = str(args["notes"])
     expense.updated_by_id = user.id
@@ -752,9 +774,7 @@ def add_payment(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any]
                 "ok": False,
                 "error": f"Não encontrei nenhum fornecedor ativo chamado '{args['vendor']}'.",
             }
-    status = args.get("status") or "Pago"
-    if status not in PAYMENT_STATUSES:
-        status = "Pago"
+    status = _match_enum(args.get("status"), PAYMENT_STATUSES) or "Pago"
     payment = Payment(
         category_id=category.id,
         vendor_id=vendor.id if vendor else None,
@@ -818,8 +838,9 @@ def update_payment(db: Session, user: User, args: dict[str, Any]) -> dict[str, A
         parsed = _parse_date(args["payment_date"])
         if parsed:
             payment.payment_date = parsed
-    if args.get("status") in PAYMENT_STATUSES:
-        payment.status = args["status"]
+    matched_status = _match_enum(args.get("status"), PAYMENT_STATUSES)
+    if matched_status:
+        payment.status = matched_status
     if args.get("notes") is not None:
         payment.notes = str(args["notes"])
     payment.updated_by_id = user.id
@@ -870,12 +891,8 @@ def add_communication_note(db: Session, user: User, args: dict[str, Any]) -> dic
     title = str(args.get("title", "")).strip()
     if not title:
         return {"ok": False, "error": "É preciso um título para a nota."}
-    category = args.get("category") or "Nota"
-    if category not in COMMUNICATION_CATEGORIES:
-        category = "Nota"
-    priority = args.get("priority") or "Média"
-    if priority not in COMMUNICATION_PRIORITIES:
-        priority = "Média"
+    category = _match_enum(args.get("category"), COMMUNICATION_CATEGORIES) or "Nota"
+    priority = _match_enum(args.get("priority"), COMMUNICATION_PRIORITIES) or "Média"
     record = WorkspaceRecord(
         module="communication",
         title=title,
@@ -907,13 +924,15 @@ def update_communication_note(db: Session, user: User, args: dict[str, Any]) -> 
         return {"ok": False, "error": f"Não encontrei nenhuma nota ativa chamada '{title}'."}
     if args.get("description") is not None:
         record.description = str(args["description"])
-    if args.get("category") in COMMUNICATION_CATEGORIES:
-        record.category = args["category"]
-        record.status = args["category"]
+    matched_category = _match_enum(args.get("category"), COMMUNICATION_CATEGORIES)
+    if matched_category:
+        record.category = matched_category
+        record.status = matched_category
     if args.get("responsible") is not None:
         record.responsible = str(args["responsible"])
-    if args.get("priority") in COMMUNICATION_PRIORITIES:
-        record.priority = args["priority"]
+    matched_priority = _match_enum(args.get("priority"), COMMUNICATION_PRIORITIES)
+    if matched_priority:
+        record.priority = matched_priority
     if "event_date" in args:
         record.event_date = _parse_event_datetime(args.get("event_date"))
     record.updated_by_id = user.id
@@ -1158,522 +1177,202 @@ def fetch_webpage(_db: Session, _user: User, args: dict[str, Any]) -> dict[str, 
     return {"ok": True, "content": text[:MAX_FETCHED_CHARS]}
 
 
+# --- Generic dispatch (keeps the tool schema small enough for the free tier) -----------
+#
+# Groq's free tier caps requests at ~12,000 tokens/minute, and every tool
+# definition sent to the model counts against that budget on *every* round.
+# Listing a separate add_/update_/remove_ tool per module (28 tools) cost
+# ~3,700+ tokens before a single word of conversation, which left almost no
+# room for the actual chat and made the assistant fail on ordinary use. These
+# three generic tools replace that whole list with the same capabilities,
+# dispatched internally by ``module`` — cutting the schema to a few hundred
+# tokens.
+
+IDENTIFIER_FIELD: dict[str, str] = {
+    "guest": "name",
+    "task": "title",
+    "vendor": "company",
+    "legal_document": "title",
+    "budget_category": "name",
+    "expense": "description",
+    "payment": "reference",
+    "communication_note": "title",
+    "moodboard_item": "title",
+}
+
+CREATE_EXECUTORS: dict[str, Callable[[Session, User, dict[str, Any]], dict[str, Any]]] = {
+    "guest": add_guest,
+    "task": add_task,
+    "vendor": add_vendor,
+    "legal_document": add_legal_document,
+    "budget_category": add_budget_category,
+    "expense": add_expense,
+    "payment": add_payment,
+    "communication_note": add_communication_note,
+    "moodboard_item": add_moodboard_item,
+}
+
+UPDATE_EXECUTORS: dict[str, Callable[[Session, User, dict[str, Any]], dict[str, Any]]] = {
+    "guest": update_guest,
+    "task": update_task,
+    "vendor": update_vendor,
+    "legal_document": update_legal_document,
+    "budget_category": update_budget_category,
+    "expense": update_expense,
+    "payment": update_payment,
+    "communication_note": update_communication_note,
+}
+
+REMOVE_EXECUTORS: dict[str, Callable[[Session, User, dict[str, Any]], dict[str, Any]]] = {
+    "guest": remove_guest,
+    "task": remove_task,
+    "vendor": remove_vendor,
+    "legal_document": remove_legal_document,
+    "budget_category": remove_budget_category,
+    "expense": remove_expense,
+    "payment": remove_payment,
+    "communication_note": remove_communication_note,
+    "moodboard_item": remove_moodboard_item,
+}
+
+MODULE_FIELD_HINTS: dict[str, str] = {
+    "guest": "side, rsvp_status, age_group, table_name, dietary_requirements, special_needs",
+    "task": "category, priority, assignee, due_date (AAAA-MM-DD), status, description, comments",
+    "vendor": (
+        "vendor_type, contact_name, phone, email, website, agreed_price, paid_amount, "
+        "deposit_date, final_payment_date, notes"
+    ),
+    "legal_document": "document_type, status, due_date (AAAA-MM-DD), responsible, notes",
+    "budget_category": "planned_limit, new_name (só em update, para renomear)",
+    "expense": "category, vendor, amount, expense_date (AAAA-MM-DD), status, notes",
+    "payment": "category, vendor, amount, payment_date (AAAA-MM-DD), status, reference, notes",
+    "communication_note": "category, description, responsible, priority, event_date (AAAA-MM-DD)",
+    "moodboard_item": "image_url (obrigatório ao criar), source_url, tags, notes",
+}
+
+
+def create_record(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any]:
+    module = str(args.get("module", ""))
+    executor = CREATE_EXECUTORS.get(module)
+    if executor is None:
+        return {
+            "ok": False,
+            "error": f"Módulo desconhecido; use um de: {', '.join(CREATE_EXECUTORS)}.",
+        }
+    fields = args.get("fields")
+    return executor(db, user, dict(fields) if isinstance(fields, dict) else {})
+
+
+def update_record(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any]:
+    module = str(args.get("module", ""))
+    executor = UPDATE_EXECUTORS.get(module)
+    if executor is None:
+        return {
+            "ok": False,
+            "error": f"Módulo desconhecido; use um de: {', '.join(UPDATE_EXECUTORS)}.",
+        }
+    identifier = str(args.get("identifier", "")).strip()
+    if not identifier:
+        return {"ok": False, "error": "É preciso o nome/título exato do registo a atualizar."}
+    fields = args.get("fields")
+    merged = dict(fields) if isinstance(fields, dict) else {}
+    merged[IDENTIFIER_FIELD[module]] = identifier
+    return executor(db, user, merged)
+
+
+def remove_record(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any]:
+    module = str(args.get("module", ""))
+    executor = REMOVE_EXECUTORS.get(module)
+    if executor is None:
+        return {
+            "ok": False,
+            "error": f"Módulo desconhecido; use um de: {', '.join(REMOVE_EXECUTORS)}.",
+        }
+    identifier = str(args.get("identifier", "")).strip()
+    if not identifier:
+        return {"ok": False, "error": "É preciso o nome/título exato do registo a remover."}
+    return executor(db, user, {IDENTIFIER_FIELD[module]: identifier})
+
+
 TOOL_EXECUTORS: dict[str, Callable[[Session, User, dict[str, Any]], dict[str, Any]]] = {
-    "add_guest": add_guest,
-    "update_guest": update_guest,
-    "remove_guest": remove_guest,
-    "add_task": add_task,
-    "update_task": update_task,
-    "remove_task": remove_task,
-    "add_vendor": add_vendor,
-    "update_vendor": update_vendor,
-    "remove_vendor": remove_vendor,
-    "add_legal_document": add_legal_document,
-    "update_legal_document": update_legal_document,
-    "remove_legal_document": remove_legal_document,
-    "add_budget_category": add_budget_category,
-    "update_budget_category": update_budget_category,
-    "remove_budget_category": remove_budget_category,
-    "add_expense": add_expense,
-    "update_expense": update_expense,
-    "remove_expense": remove_expense,
-    "add_payment": add_payment,
-    "update_payment": update_payment,
-    "remove_payment": remove_payment,
-    "add_communication_note": add_communication_note,
-    "update_communication_note": update_communication_note,
-    "remove_communication_note": remove_communication_note,
-    "add_moodboard_item": add_moodboard_item,
-    "remove_moodboard_item": remove_moodboard_item,
+    "create_record": create_record,
+    "update_record": update_record,
+    "remove_record": remove_record,
     "permanently_delete_record": permanently_delete_record,
     "fetch_webpage": fetch_webpage,
 }
 
 
+_MODULE_FIELD_HINT_TEXT = " · ".join(
+    f"{module}: {hint}" for module, hint in MODULE_FIELD_HINTS.items()
+)
+
 ASSISTANT_TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "add_guest",
-            "description": "Adiciona um novo convidado à lista de convidados do casamento.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Nome completo do convidado."},
-                    "side": {"type": "string", "enum": list(SIDES)},
-                    "rsvp_status": {"type": "string", "enum": list(RSVP_STATUSES)},
-                    "age_group": {"type": "string", "enum": list(AGE_GROUPS)},
-                    "table_name": {"type": "string", "description": "Mesa atribuída, se souberem."},
-                    "dietary_requirements": {"type": "string"},
-                    "special_needs": {"type": "string"},
-                },
-                "required": ["name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "update_guest",
+            "name": "create_record",
             "description": (
-                "Atualiza dados de um convidado já existente (estado de resposta, mesa, "
-                "restrições alimentares, etc.)."
+                "Cria um novo registo num módulo do casamento. 'fields' leva os dados desse "
+                "registo, incluindo o nome/título. Campos típicos por módulo — "
+                f"{_MODULE_FIELD_HINT_TEXT}."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Nome exato do convidado a atualizar.",
-                    },
-                    "side": {"type": "string", "enum": list(SIDES)},
-                    "rsvp_status": {"type": "string", "enum": list(RSVP_STATUSES)},
-                    "age_group": {"type": "string", "enum": list(AGE_GROUPS)},
-                    "table_name": {"type": "string"},
-                    "dietary_requirements": {"type": "string"},
-                    "special_needs": {"type": "string"},
-                },
-                "required": ["name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "remove_guest",
-            "description": (
-                "Remove um convidado da lista ativa (ex.: já não vai comparecer). "
-                "Fica recuperável em 'Todos os eliminados', não é apagado de vez."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {"name": {"type": "string"}},
-                "required": ["name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_task",
-            "description": "Cria uma nova tarefa na checklist de planeamento.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "category": {"type": "string"},
-                    "priority": {"type": "string", "enum": list(TASK_PRIORITIES)},
-                    "assignee": {"type": "string"},
-                    "due_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "status": {"type": "string", "enum": list(TASK_STATUSES)},
-                },
-                "required": ["title"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "update_task",
-            "description": (
-                "Atualiza uma tarefa existente: estado, prioridade, categoria, responsável, "
-                "prazo, descrição ou comentários."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string", "description": "Título exato da tarefa."},
-                    "status": {"type": "string", "enum": list(TASK_STATUSES)},
-                    "priority": {"type": "string", "enum": list(TASK_PRIORITIES)},
-                    "category": {"type": "string"},
-                    "assignee": {"type": "string"},
-                    "due_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "description": {"type": "string"},
-                    "comments": {"type": "string"},
-                },
-                "required": ["title"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "remove_task",
-            "description": (
-                "Remove uma tarefa da checklist ativa (recuperável em 'Todos os eliminados')."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {"title": {"type": "string"}},
-                "required": ["title"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_vendor",
-            "description": "Adiciona um novo fornecedor.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "company": {"type": "string"},
-                    "vendor_type": {
-                        "type": "string",
-                        "description": "Tipo de fornecedor, ex.: Fotografia, Catering, Flores.",
-                    },
-                    "contact_name": {"type": "string"},
-                    "phone": {"type": "string"},
-                    "email": {"type": "string"},
-                    "website": {"type": "string"},
-                    "agreed_price": {"type": "number"},
-                    "notes": {"type": "string"},
-                },
-                "required": ["company", "vendor_type"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "update_vendor",
-            "description": (
-                "Atualiza dados de um fornecedor existente (contacto, preço, pago, datas, notas)."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "company": {"type": "string", "description": "Nome exato do fornecedor."},
-                    "vendor_type": {"type": "string"},
-                    "contact_name": {"type": "string"},
-                    "phone": {"type": "string"},
-                    "email": {"type": "string"},
-                    "website": {"type": "string"},
-                    "agreed_price": {"type": "number"},
-                    "paid_amount": {"type": "number"},
-                    "deposit_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "final_payment_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "notes": {"type": "string"},
-                },
-                "required": ["company"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "remove_vendor",
-            "description": "Remove um fornecedor (recuperável em 'Todos os eliminados').",
-            "parameters": {
-                "type": "object",
-                "properties": {"company": {"type": "string"}},
-                "required": ["company"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_legal_document",
-            "description": "Adiciona um documento/processo legal (ex.: certidão, marcação).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "document_type": {"type": "string"},
-                    "status": {"type": "string", "enum": list(LEGAL_STATUSES)},
-                    "due_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "responsible": {"type": "string"},
-                    "notes": {"type": "string"},
-                },
-                "required": ["title"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "update_legal_document",
-            "description": "Atualiza um documento legal existente.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string", "description": "Título exato do documento."},
-                    "document_type": {"type": "string"},
-                    "status": {"type": "string", "enum": list(LEGAL_STATUSES)},
-                    "due_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "responsible": {"type": "string"},
-                    "notes": {"type": "string"},
-                },
-                "required": ["title"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "remove_legal_document",
-            "description": "Remove um documento legal (recuperável em 'Todos os eliminados').",
-            "parameters": {
-                "type": "object",
-                "properties": {"title": {"type": "string"}},
-                "required": ["title"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_budget_category",
-            "description": "Cria uma nova categoria de orçamento com um limite planeado.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "planned_limit": {"type": "number"},
-                },
-                "required": ["name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "update_budget_category",
-            "description": "Atualiza o nome ou o limite planeado de uma categoria de orçamento.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Nome exato da categoria."},
-                    "new_name": {"type": "string"},
-                    "planned_limit": {"type": "number"},
-                },
-                "required": ["name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "remove_budget_category",
-            "description": (
-                "Remove uma categoria de orçamento (recuperável em 'Todos os eliminados')."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {"name": {"type": "string"}},
-                "required": ["name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_expense",
-            "description": "Regista uma nova despesa numa categoria de orçamento existente.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "description": {"type": "string"},
-                    "category": {
-                        "type": "string",
-                        "description": "Nome exato da categoria de orçamento.",
-                    },
-                    "vendor": {
-                        "type": "string",
-                        "description": "Nome exato do fornecedor, se aplicável.",
-                    },
-                    "amount": {"type": "number"},
-                    "expense_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "status": {"type": "string", "enum": list(EXPENSE_STATUSES)},
-                    "notes": {"type": "string"},
-                },
-                "required": ["description", "category", "amount"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "update_expense",
-            "description": "Atualiza uma despesa existente (encontrada pela descrição exata).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "description": {"type": "string", "description": "Descrição exata da despesa."},
-                    "category": {"type": "string"},
-                    "vendor": {"type": "string"},
-                    "amount": {"type": "number"},
-                    "expense_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "status": {"type": "string", "enum": list(EXPENSE_STATUSES)},
-                    "notes": {"type": "string"},
-                },
-                "required": ["description"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "remove_expense",
-            "description": "Remove uma despesa (recuperável em 'Todos os eliminados').",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "description": {"type": "string"},
-                    "category": {
-                        "type": "string",
-                        "description": "Ajuda a desambiguar se houver várias.",
+                    "module": {"type": "string", "enum": list(CREATE_EXECUTORS)},
+                    "fields": {
+                        "type": "object",
+                        "description": (
+                            'Dados do novo registo (ex.: {"name": "Bruna", "side": "Noiva"}).'
+                        ),
                     },
                 },
-                "required": ["description"],
+                "required": ["module", "fields"],
             },
         },
     },
     {
         "type": "function",
         "function": {
-            "name": "add_payment",
-            "description": "Regista um novo pagamento numa categoria de orçamento existente.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "category": {
-                        "type": "string",
-                        "description": "Nome exato da categoria de orçamento.",
-                    },
-                    "vendor": {"type": "string"},
-                    "amount": {"type": "number"},
-                    "payment_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "status": {"type": "string", "enum": list(PAYMENT_STATUSES)},
-                    "reference": {"type": "string"},
-                    "notes": {"type": "string"},
-                },
-                "required": ["category", "amount"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "update_payment",
-            "description": "Atualiza um pagamento existente (encontrado pela referência exata).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "reference": {
-                        "type": "string",
-                        "description": "Referência exata do pagamento.",
-                    },
-                    "category": {"type": "string"},
-                    "vendor": {"type": "string"},
-                    "amount": {"type": "number"},
-                    "payment_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                    "status": {"type": "string", "enum": list(PAYMENT_STATUSES)},
-                    "notes": {"type": "string"},
-                },
-                "required": ["reference"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "remove_payment",
-            "description": "Remove um pagamento (recuperável em 'Todos os eliminados').",
-            "parameters": {
-                "type": "object",
-                "properties": {"reference": {"type": "string"}},
-                "required": ["reference"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_communication_note",
+            "name": "update_record",
             "description": (
-                "Regista uma nota, ideia, decisão, lembrete ou tarefa rápida na comunicação."
+                "Atualiza um registo existente, encontrado pelo nome/título exato em "
+                "'identifier'. 'fields' leva só os dados a mudar. Campos típicos por módulo — "
+                f"{_MODULE_FIELD_HINT_TEXT}."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string"},
-                    "category": {"type": "string", "enum": list(COMMUNICATION_CATEGORIES)},
-                    "description": {"type": "string"},
-                    "responsible": {"type": "string"},
-                    "priority": {"type": "string", "enum": list(COMMUNICATION_PRIORITIES)},
-                    "event_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                },
-                "required": ["title"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "update_communication_note",
-            "description": "Atualiza uma nota de comunicação existente.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string", "description": "Título exato da nota."},
-                    "category": {"type": "string", "enum": list(COMMUNICATION_CATEGORIES)},
-                    "description": {"type": "string"},
-                    "responsible": {"type": "string"},
-                    "priority": {"type": "string", "enum": list(COMMUNICATION_PRIORITIES)},
-                    "event_date": {"type": "string", "description": "Formato AAAA-MM-DD."},
-                },
-                "required": ["title"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "remove_communication_note",
-            "description": "Remove uma nota de comunicação (recuperável em 'Todos os eliminados').",
-            "parameters": {
-                "type": "object",
-                "properties": {"title": {"type": "string"}},
-                "required": ["title"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_moodboard_item",
-            "description": (
-                "Adiciona uma imagem de inspiração ao moodboard a partir de um endereço de imagem."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "image_url": {"type": "string", "description": "Link direto para a imagem."},
-                    "source_url": {
+                    "module": {"type": "string", "enum": list(UPDATE_EXECUTORS)},
+                    "identifier": {
                         "type": "string",
-                        "description": "Página de origem, se souberem.",
+                        "description": "Nome/título exato do registo.",
                     },
-                    "tags": {"type": "string"},
-                    "notes": {"type": "string"},
+                    "fields": {"type": "object", "description": "Só os campos a mudar."},
                 },
-                "required": ["title", "image_url"],
+                "required": ["module", "identifier", "fields"],
             },
         },
     },
     {
         "type": "function",
         "function": {
-            "name": "remove_moodboard_item",
+            "name": "remove_record",
             "description": (
-                "Remove uma inspiração do moodboard (recuperável em 'Todos os eliminados')."
+                "Remove (arquiva) um registo existente, encontrado pelo nome/título exato. "
+                "Fica recuperável em 'Todos os eliminados', nunca apaga em definitivo."
             ),
             "parameters": {
                 "type": "object",
-                "properties": {"title": {"type": "string"}},
-                "required": ["title"],
+                "properties": {
+                    "module": {"type": "string", "enum": list(REMOVE_EXECUTORS)},
+                    "identifier": {
+                        "type": "string",
+                        "description": "Nome/título exato do registo.",
+                    },
+                },
+                "required": ["module", "identifier"],
             },
         },
     },
@@ -1686,7 +1385,7 @@ ASSISTANT_TOOLS: list[dict[str, Any]] = [
                 "funciona num registo já removido/arquivado. Só usem depois de o casal "
                 "confirmar de forma clara e inequívoca, na própria conversa, que querem "
                 "apagar em definitivo (não apenas remover) — se houver qualquer dúvida, "
-                "usem antes a ferramenta de remover (arquivar) e perguntem."
+                "usem antes remove_record e perguntem."
             ),
             "parameters": {
                 "type": "object",

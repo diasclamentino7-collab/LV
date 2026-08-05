@@ -44,6 +44,37 @@ def test_add_guest_creates_a_record_and_rejects_duplicates() -> None:
     assert db.scalar(select(Guest).where(Guest.name == "Bruna")).id == guest.id
 
 
+def test_enum_fields_match_regardless_of_case() -> None:
+    """Without per-field JSON-schema enums the model may send any casing.
+
+    Groq once returned "noivo" instead of "Noivo" for a guest's side, and
+    the old exact-match check silently dropped it — the guest looked like
+    it worked but the field stayed empty. _match_enum must catch this.
+    """
+    db, user = make_session_and_user()
+
+    result = tools.add_guest(
+        db, user, {"name": "João", "side": "noivo", "rsvp_status": "confirmado"}
+    )
+    assert result["ok"] is True
+    guest = db.scalar(select(Guest).where(Guest.name == "João"))
+    assert guest.side == "Noivo"
+    assert guest.rsvp_status == "Confirmado"
+
+
+def test_enum_fields_tolerate_portuguese_gender_agreement() -> None:
+    """Groq wrote "confirmada" for a female guest; the enum is "Confirmado"."""
+    db, user = make_session_and_user()
+
+    result = tools.add_guest(
+        db, user, {"name": "Marta", "side": "noiva", "rsvp_status": "confirmada"}
+    )
+    assert result["ok"] is True
+    guest = db.scalar(select(Guest).where(Guest.name == "Marta"))
+    assert guest.side == "Noiva"
+    assert guest.rsvp_status == "Confirmado"
+
+
 def test_add_guest_requires_a_name_and_ignores_invalid_enum_values() -> None:
     db, user = make_session_and_user()
 
@@ -385,3 +416,48 @@ def test_fetch_webpage_strips_html_and_bounds_length(monkeypatch) -> None:
     assert "Olá mundo" in result["content"]
     assert "<p>" not in result["content"]
     assert "color:red" not in result["content"]
+
+
+def test_create_record_dispatches_to_the_right_module() -> None:
+    db, user = make_session_and_user()
+
+    result = tools.create_record(
+        db, user, {"module": "guest", "fields": {"name": "Bruna", "side": "Noiva"}}
+    )
+    assert result["ok"] is True
+    guest = db.scalar(select(Guest).where(Guest.name == "Bruna"))
+    assert guest is not None
+    assert guest.side == "Noiva"
+
+    unknown_module = tools.create_record(db, user, {"module": "not-a-module", "fields": {}})
+    assert unknown_module["ok"] is False
+
+
+def test_update_record_finds_by_identifier_and_merges_fields() -> None:
+    db, user = make_session_and_user()
+    tools.add_task(db, user, {"title": "Reservar espaço"})
+
+    result = tools.update_record(
+        db,
+        user,
+        {"module": "task", "identifier": "Reservar espaço", "fields": {"status": "Concluído"}},
+    )
+    assert result["ok"] is True
+    task = db.scalar(select(Task).where(Task.title == "Reservar espaço"))
+    assert task.status == "Concluído"
+
+    missing_identifier = tools.update_record(db, user, {"module": "task", "fields": {}})
+    assert missing_identifier["ok"] is False
+
+
+def test_remove_record_archives_via_the_right_module() -> None:
+    db, user = make_session_and_user()
+    tools.add_vendor(db, user, {"company": "Foto Bonita", "vendor_type": "Fotografia"})
+
+    result = tools.remove_record(db, user, {"module": "vendor", "identifier": "Foto Bonita"})
+    assert result["ok"] is True
+    vendor = db.scalar(select(Vendor).where(Vendor.company == "Foto Bonita"))
+    assert vendor.is_archived is True
+
+    unknown_module = tools.remove_record(db, user, {"module": "not-a-module", "identifier": "x"})
+    assert unknown_module["ok"] is False
