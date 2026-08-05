@@ -67,11 +67,15 @@ def recent_messages(
     if provider not in PROVIDERS:
         return error_response("Assistente desconhecido.", 404)
     with SessionLocal() as db:
-        if authenticated_user(db, request) is None:
+        user = authenticated_user(db, request)
+        if user is None:
             return error_response("A sessão terminou. Iniciem sessão novamente.", 401)
         rows = db.scalars(
             select(AssistantMessage)
-            .where(AssistantMessage.provider == provider)
+            .where(
+                AssistantMessage.provider == provider,
+                AssistantMessage.created_by_id == user.id,
+            )
             .order_by(AssistantMessage.id.desc())
             .limit(DISPLAY_LIMIT)
         ).all()
@@ -121,7 +125,10 @@ def send_message(
 
         history_rows = db.scalars(
             select(AssistantMessage)
-            .where(AssistantMessage.provider == provider)
+            .where(
+                AssistantMessage.provider == provider,
+                AssistantMessage.created_by_id == user.id,
+            )
             .order_by(AssistantMessage.id.desc())
             .limit(HISTORY_LIMIT)
         ).all()

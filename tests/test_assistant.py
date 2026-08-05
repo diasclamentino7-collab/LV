@@ -55,6 +55,17 @@ def assistant_client(monkeypatch, settings=None):
     return TestClient(app), test_session, user_id
 
 
+def add_second_user(test_session: sessionmaker) -> int:
+    # Deliberately not named "Leonor": that name triggers the separate
+    # love-confirmation login step (see test_auth_experience.py), which is
+    # unrelated to what this test is checking.
+    with test_session() as db:
+        user = User(name="Ana", password_hash=hash_password("password123"))
+        db.add(user)
+        db.commit()
+        return user.id
+
+
 def login(client: TestClient, user_id: int) -> None:
     page = client.get("/login")
     response = client.post(
@@ -193,3 +204,46 @@ def test_unknown_provider_and_missing_csrf_are_rejected(monkeypatch) -> None:
             data={"provider": "groq", "content": "Olá"},
         )
         assert no_csrf.status_code == 403
+
+
+def test_each_user_gets_their_own_private_conversation(monkeypatch) -> None:
+    client, test_session, vitor_id = assistant_client(monkeypatch)
+    ana_id = add_second_user(test_session)
+
+    monkeypatch.setattr(
+        assistant_routes, "send_chat_message", lambda *args, **kwargs: "resposta"
+    )
+
+    with client:
+        login(client, vitor_id)
+        page = client.get("/dashboard")
+        client.post(
+            "/api/assistant/messages",
+            data={
+                "provider": "groq",
+                "content": "Mensagem do Vítor",
+                "csrf_token": csrf_from(page.text),
+            },
+        )
+
+        # Logging in as Ana replaces the session outright (login() itself
+        # clears any prior session), no explicit logout needed.
+        login(client, ana_id)
+        page = client.get("/dashboard")
+        ana_history = client.get("/api/assistant/messages?provider=groq").json()["messages"]
+        assert ana_history == []
+
+        client.post(
+            "/api/assistant/messages",
+            data={
+                "provider": "groq",
+                "content": "Mensagem da Ana",
+                "csrf_token": csrf_from(page.text),
+            },
+        )
+        ana_history = client.get("/api/assistant/messages?provider=groq").json()["messages"]
+        assert [m["content"] for m in ana_history] == ["Mensagem da Ana", "resposta"]
+
+        login(client, vitor_id)
+        vitor_history = client.get("/api/assistant/messages?provider=groq").json()["messages"]
+        assert [m["content"] for m in vitor_history] == ["Mensagem do Vítor", "resposta"]
