@@ -54,3 +54,97 @@ def test_groq_malformed_response_raises_assistant_error(monkeypatch) -> None:
     monkeypatch.setattr(providers.httpx, "post", fake_post)
     with pytest.raises(AssistantError, match="Groq"):
         send_chat_message("groq", "groq-test", "llama-3.3-70b-versatile", "system", [])
+
+
+def test_tool_call_is_executed_and_its_result_is_sent_back(monkeypatch) -> None:
+    calls = []
+
+    def fake_execute(name, arguments):
+        calls.append((name, arguments))
+        return {"ok": True, "message": "Convidado Bruna adicionado."}
+
+    responses = [
+        httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "tool_calls": [
+                                {
+                                    "id": "call_1",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "add_guest",
+                                        "arguments": '{"name": "Bruna", "side": "Noiva"}',
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            },
+        ),
+        httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "Adicionei a Bruna como convidada."}}]},
+        ),
+    ]
+    posted_payloads = []
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        posted_payloads.append(json)
+        return responses[len(posted_payloads) - 1]
+
+    monkeypatch.setattr(providers.httpx, "post", fake_post)
+    reply = send_chat_message(
+        "groq",
+        "groq-test",
+        "llama-3.3-70b-versatile",
+        "system",
+        [],
+        tools=[{"type": "function", "function": {"name": "add_guest"}}],
+        execute_tool=fake_execute,
+    )
+
+    assert reply == "Adicionei a Bruna como convidada."
+    assert calls == [("add_guest", {"name": "Bruna", "side": "Noiva"})]
+    # The tool result must be threaded back as a "tool" message on the retry.
+    assert posted_payloads[1]["messages"][-1]["role"] == "tool"
+    assert posted_payloads[1]["messages"][-1]["tool_call_id"] == "call_1"
+
+
+def test_tool_loop_gives_up_after_too_many_rounds(monkeypatch) -> None:
+    def always_calls_tool(*args, **kwargs):
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "tool_calls": [
+                                {
+                                    "id": "call_x",
+                                    "type": "function",
+                                    "function": {"name": "add_guest", "arguments": "{}"},
+                                }
+                            ],
+                        }
+                    }
+                ]
+            },
+        )
+
+    monkeypatch.setattr(providers.httpx, "post", always_calls_tool)
+    with pytest.raises(AssistantError):
+        send_chat_message(
+            "groq",
+            "groq-test",
+            "llama-3.3-70b-versatile",
+            "system",
+            [],
+            tools=[{"type": "function", "function": {"name": "add_guest"}}],
+            execute_tool=lambda name, arguments: {"ok": True},
+        )

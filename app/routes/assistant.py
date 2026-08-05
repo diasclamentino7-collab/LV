@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.core.config import Settings, get_settings
 from app.db.session import SessionLocal
 from app.models.assistant import AssistantMessage
+from app.models.core import User
 from app.repositories.project_settings import get_project_settings
 from app.services.assistant_context import build_context_snapshot
 from app.services.assistant_providers import (
@@ -17,6 +18,7 @@ from app.services.assistant_providers import (
     AssistantError,
     send_chat_message,
 )
+from app.services.assistant_tools import ASSISTANT_TOOLS, TOOL_EXECUTORS
 from app.services.auth_session import authenticated_user
 from app.services.csrf import valid_csrf_token
 
@@ -29,11 +31,19 @@ DISPLAY_LIMIT = 50
 SYSTEM_PROMPT_TEMPLATE = (
     "És um assistente de planeamento de casamento integrado na aplicação "
     '"LV – Wedding Planner". Respondem sempre em português de Portugal, de '
-    "forma simpática, concisa e prática. Tens acesso apenas de leitura aos "
-    "dados atuais da aplicação, listados abaixo; nunca finjas alterar dados "
-    "— se vos pedirem para mudar algo, digam para o fazerem diretamente na "
-    "aplicação. Se não tiverem a certeza de algo, digam isso claramente em "
-    "vez de inventar.\n\n{context}"
+    "forma simpática, concisa e prática.\n\n"
+    "Tens acesso de leitura aos dados atuais da aplicação, listados abaixo, "
+    "e a ferramentas para criar, atualizar ou remover convidados, tarefas e "
+    "fornecedores, e para abrir páginas da internet (ex.: o site de um "
+    "fornecedor). Usa as ferramentas sempre que vos pedirem para fazer uma "
+    "alteração — não digam apenas que vão fazer, façam mesmo através da "
+    "ferramenta correta. 'Remover' arquiva o registo (fica recuperável em "
+    "Todos os eliminados), nunca apaga em definitivo.\n\n"
+    "Depois de usar uma ferramenta, confirmem claramente o que foi feito "
+    "(ou o que falhou, se falhou). Se faltar informação essencial para "
+    "concluir um pedido (ex.: nome de um convidado a adicionar), perguntem "
+    "antes de inventar. Se não tiverem a certeza de algo que não conseguem "
+    "verificar, digam isso claramente em vez de inventar.\n\n{context}"
 )
 
 
@@ -57,6 +67,25 @@ def message_payload(message: AssistantMessage) -> dict[str, object]:
 
 def provider_credentials(settings: Settings) -> tuple[str, str]:
     return settings.groq_api_key, settings.groq_model
+
+
+def make_tool_executor(db, user: User):
+    """Bind the shared tool executors to this request's session and user."""
+
+    def execute(name: str, arguments: dict[str, object]) -> dict[str, object]:
+        executor = TOOL_EXECUTORS.get(name)
+        if executor is None:
+            return {"ok": False, "error": "Ferramenta desconhecida."}
+        try:
+            return executor(db, user, arguments)
+        except Exception:
+            db.rollback()
+            return {
+                "ok": False,
+                "error": "Não foi possível concluir essa ação. Tentem descrevê-la de outra forma.",
+            }
+
+    return execute
 
 
 @router.get("/messages")
@@ -141,8 +170,12 @@ def send_message(
             created_by_id=user.id,
             updated_by_id=user.id,
         )
+        # Committed immediately (not just flushed): the tool loop below may
+        # roll back its own failed calls, and that must never also erase the
+        # message the couple already sent.
         db.add(user_message)
-        db.flush()
+        db.commit()
+        db.refresh(user_message)
 
         try:
             reply = send_chat_message(
@@ -151,6 +184,8 @@ def send_message(
                 model,
                 system_prompt,
                 [*history, {"role": "user", "content": clean_content}],
+                tools=ASSISTANT_TOOLS,
+                execute_tool=make_tool_executor(db, user),
             )
         except AssistantError as error:
             db.rollback()

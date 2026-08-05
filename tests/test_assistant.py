@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+import httpx
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -14,7 +15,9 @@ import app.routes.auth as auth_routes
 from app.db.base import Base
 from app.main import app
 from app.models.assistant import AssistantMessage
-from app.models.core import User
+from app.models.core import Activity, User
+from app.models.planning import Guest
+from app.services import assistant_providers
 from app.services.assistant_providers import AssistantError
 from app.services.security import hash_password
 
@@ -111,7 +114,7 @@ def test_send_message_persists_conversation_and_calls_the_selected_provider(monk
 
     calls = []
 
-    def fake_send(provider, api_key, model, system_prompt, history):
+    def fake_send(provider, api_key, model, system_prompt, history, **kwargs):
         calls.append(
             {
                 "provider": provider,
@@ -163,7 +166,7 @@ def test_send_message_persists_conversation_and_calls_the_selected_provider(monk
         assert {row.provider for row in stored} == {"groq"}
 
 
-def test_provider_failure_does_not_persist_a_half_written_conversation(monkeypatch) -> None:
+def test_provider_failure_keeps_the_users_message_but_adds_no_reply(monkeypatch) -> None:
     client, test_session, user_id = assistant_client(monkeypatch)
 
     def failing_send(*args, **kwargs):
@@ -182,7 +185,11 @@ def test_provider_failure_does_not_persist_a_half_written_conversation(monkeypat
         assert "Groq" in response.json()["message"]
 
     with test_session() as db:
-        assert db.scalars(select(AssistantMessage)).first() is None
+        # The couple's own message is never lost, even when the assistant
+        # itself fails to reply — only a matching assistant reply is absent.
+        stored = db.scalars(select(AssistantMessage)).all()
+        assert [row.role for row in stored] == ["user"]
+        assert stored[0].content == "Olá"
 
 
 def test_unknown_provider_and_missing_csrf_are_rejected(monkeypatch) -> None:
@@ -247,3 +254,72 @@ def test_each_user_gets_their_own_private_conversation(monkeypatch) -> None:
         login(client, vitor_id)
         vitor_history = client.get("/api/assistant/messages?provider=groq").json()["messages"]
         assert [m["content"] for m in vitor_history] == ["Mensagem do Vítor", "resposta"]
+
+
+def test_assistant_can_actually_add_a_guest_end_to_end(monkeypatch) -> None:
+    """Exercises the real tool loop and the real tool executors together."""
+    client, test_session, user_id = assistant_client(monkeypatch)
+
+    groq_responses = [
+        httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "tool_calls": [
+                                {
+                                    "id": "call_1",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "add_guest",
+                                        "arguments": '{"name": "Bruna", "side": "Noiva"}',
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            },
+        ),
+        httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "Adicionei a Bruna como convidada."}}]},
+        ),
+    ]
+
+    def counting_fake_post(url, headers=None, json=None, timeout=None):
+        response = groq_responses[counting_fake_post.calls]  # type: ignore[attr-defined]
+        counting_fake_post.calls += 1
+        return response
+
+    counting_fake_post.calls = 0
+    monkeypatch.setattr(assistant_providers.httpx, "post", counting_fake_post)
+
+    with client:
+        login(client, user_id)
+        page = client.get("/dashboard")
+        response = client.post(
+            "/api/assistant/messages",
+            data={
+                "provider": "groq",
+                "content": "Adiciona a Bruna como convidada da parte da noiva",
+                "csrf_token": csrf_from(page.text),
+            },
+        )
+        assert response.status_code == 201
+        reply = response.json()["assistant_message"]["content"]
+        assert reply == "Adicionei a Bruna como convidada."
+
+    with test_session() as db:
+        guest = db.scalar(select(Guest).where(Guest.name == "Bruna"))
+        assert guest is not None
+        assert guest.side == "Noiva"
+        assert guest.created_by_id == user_id
+
+        activity = db.scalar(
+            select(Activity).where(Activity.description.ilike("%Bruna%"))
+        )
+        assert activity is not None
+        assert activity.user_id == user_id

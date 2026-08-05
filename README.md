@@ -195,10 +195,24 @@ memória do navegador.
 O ícone com o símbolo ✨ no cabeçalho abre um painel lateral com um assistente
 conversacional (Groq, com um nível gratuito sem cartão de crédito e sem
 restrição geográfica — ao contrário do nível gratuito do Gemini, que a Google
-não disponibiliza na UE/EEE/Reino Unido). A conversa fica guardada na base de
-dados e é partilhada pelos dois utilizadores. Antes de responder, o
-assistente recebe um resumo apenas de leitura do casamento (orçamento,
-convidados e tarefas atuais) — nunca altera dados sozinho.
+não disponibiliza na UE/EEE/Reino Unido). Cada utilizador tem a sua própria
+conversa privada, guardada na base de dados (o histórico do Vítor e o da
+Leonor não se misturam).
+
+Antes de responder, o assistente recebe um resumo apenas de leitura do
+casamento (orçamento por categoria, convidados, tarefas, fornecedores e
+documentos legais — sem contactos de terceiros nem notas confidenciais). Além
+disso, o assistente pode **executar ações reais** através de ferramentas:
+
+- adicionar, atualizar ou remover convidados, tarefas e fornecedores;
+- ir buscar o conteúdo de uma página da internet (`fetch_webpage`), por
+  exemplo quando lhe é dado o link de um fornecedor.
+
+"Remover" arquiva o registo (`is_archived`) em vez de o apagar de vez — segue
+o mesmo padrão de eliminação reversível do resto da aplicação — e cada ação
+fica registada na atividade da conta com o autor certo. O assistente nunca
+inventa dados que faltam: se um pedido for ambíguo ou incompleto, pergunta
+antes de agir.
 
 A chave é criada gratuitamente em [console.groq.com/keys](https://console.groq.com/keys)
 e definida no `.env`:
