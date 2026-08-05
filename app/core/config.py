@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     allowed_hosts: str = "localhost,127.0.0.1,testserver"
     log_level: str = "INFO"
     max_upload_size_mb: int = 15
-    gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
 
     @field_validator("database_url")
     @classmethod

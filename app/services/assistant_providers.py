@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import httpx
 
-PROVIDERS = ("gemini",)
-PROVIDER_LABELS = {"gemini": "Gemini"}
+PROVIDERS = ("groq",)
+PROVIDER_LABELS = {"groq": "Groq"}
 REQUEST_TIMEOUT_SECONDS = 30.0
 MAX_REPLY_TOKENS = 700
 
@@ -30,40 +30,32 @@ def send_chat_message(
     if not api_key:
         label = PROVIDER_LABELS.get(provider, provider)
         raise AssistantError(f"A chave da API do {label} ainda não está configurada.")
-    if provider == "gemini":
-        return _send_gemini(api_key, model, system_prompt, history)
+    if provider == "groq":
+        return _send_groq(api_key, model, system_prompt, history)
     raise AssistantError("Assistente desconhecido.")
 
 
-def _send_gemini(
+def _send_groq(
     api_key: str, model: str, system_prompt: str, history: list[dict[str, str]]
 ) -> str:
-    contents = [
-        {
-            "role": "model" if message["role"] == "assistant" else "user",
-            "parts": [{"text": message["content"]}],
-        }
-        for message in history
-    ]
+    messages = [{"role": "system", "content": system_prompt}, *history]
     try:
         response = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-            params={"key": api_key},
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
             json={
-                "contents": contents,
-                "systemInstruction": {"parts": [{"text": system_prompt}]},
-                "generationConfig": {
-                    "maxOutputTokens": MAX_REPLY_TOKENS,
-                    "temperature": 0.4,
-                },
+                "model": model,
+                "messages": messages,
+                "max_tokens": MAX_REPLY_TOKENS,
+                "temperature": 0.4,
             },
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
     except httpx.HTTPError as error:
-        raise AssistantError("Não foi possível contactar o Gemini. Tentem novamente.") from error
+        raise AssistantError("Não foi possível contactar o Groq. Tentem novamente.") from error
     if response.status_code >= 400:
-        raise AssistantError("O Gemini não conseguiu responder. Tentem novamente em instantes.")
+        raise AssistantError("O Groq não conseguiu responder. Tentem novamente em instantes.")
     try:
-        return response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return response.json()["choices"][0]["message"]["content"].strip()
     except (KeyError, IndexError, TypeError, ValueError) as error:
-        raise AssistantError("Resposta inesperada do Gemini.") from error
+        raise AssistantError("Resposta inesperada do Groq.") from error

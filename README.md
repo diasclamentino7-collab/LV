@@ -193,16 +193,19 @@ memória do navegador.
 ## Assistente de IA
 
 O ícone com o símbolo ✨ no cabeçalho abre um painel lateral com um assistente
-conversacional (Gemini, usando a camada gratuita da Google). A conversa fica
-guardada na base de dados e é partilhada pelos dois utilizadores. Antes de
-responder, o assistente recebe um resumo apenas de leitura do casamento
-(orçamento, convidados e tarefas atuais) — nunca altera dados sozinho.
+conversacional (Groq, com um nível gratuito sem cartão de crédito e sem
+restrição geográfica — ao contrário do nível gratuito do Gemini, que a Google
+não disponibiliza na UE/EEE/Reino Unido). A conversa fica guardada na base de
+dados e é partilhada pelos dois utilizadores. Antes de responder, o
+assistente recebe um resumo apenas de leitura do casamento (orçamento,
+convidados e tarefas atuais) — nunca altera dados sozinho.
 
-Precisa da chave de API do Gemini, definida no `.env`:
+A chave é criada gratuitamente em [console.groq.com/keys](https://console.groq.com/keys)
+e definida no `.env`:
 
 ```env
-LV_GEMINI_API_KEY=
-LV_GEMINI_MODEL=gemini-2.0-flash
+LV_GROQ_API_KEY=
+LV_GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
 Sem a chave, o assistente informa que ainda não está configurado; o resto da

@@ -20,12 +20,12 @@ from app.services.security import hash_password
 
 
 class FakeSettings:
-    gemini_api_key = "test-gemini-key"
-    gemini_model = "gemini-2.0-flash"
+    groq_api_key = "test-groq-key"
+    groq_model = "llama-3.3-70b-versatile"
 
 
 class UnconfiguredSettings(FakeSettings):
-    gemini_api_key = ""
+    groq_api_key = ""
 
 
 def csrf_from(page: str) -> str:
@@ -83,13 +83,13 @@ def test_unconfigured_provider_is_rejected_before_any_network_call(monkeypatch) 
         response = client.post(
             "/api/assistant/messages",
             data={
-                "provider": "gemini",
+                "provider": "groq",
                 "content": "Quanto orçamento resta?",
                 "csrf_token": csrf_from(page.text),
             },
         )
         assert response.status_code == 503
-        assert "Gemini" in response.json()["message"]
+        assert "Groq" in response.json()["message"]
 
     with test_session() as db:
         assert db.scalars(select(AssistantMessage)).first() is None
@@ -122,7 +122,7 @@ def test_send_message_persists_conversation_and_calls_the_selected_provider(monk
         response = client.post(
             "/api/assistant/messages",
             data={
-                "provider": "gemini",
+                "provider": "groq",
                 "content": "Quanto orçamento resta?",
                 "csrf_token": token,
             },
@@ -132,16 +132,16 @@ def test_send_message_persists_conversation_and_calls_the_selected_provider(monk
         assert payload["ok"] is True
         assert payload["user_message"]["content"] == "Quanto orçamento resta?"
         assert payload["assistant_message"]["content"] == "O orçamento restante é 4200 EUR."
-        assert payload["assistant_message"]["provider"] == "gemini"
+        assert payload["assistant_message"]["provider"] == "groq"
 
         assert len(calls) == 1
-        assert calls[0]["provider"] == "gemini"
-        assert calls[0]["api_key"] == "test-gemini-key"
-        assert calls[0]["model"] == "gemini-2.0-flash"
+        assert calls[0]["provider"] == "groq"
+        assert calls[0]["api_key"] == "test-groq-key"
+        assert calls[0]["model"] == "llama-3.3-70b-versatile"
         assert "Casal:" in calls[0]["system_prompt"]
         assert calls[0]["history"][-1] == {"role": "user", "content": "Quanto orçamento resta?"}
 
-        history_response = client.get("/api/assistant/messages?provider=gemini")
+        history_response = client.get("/api/assistant/messages?provider=groq")
         assert history_response.status_code == 200
         messages = history_response.json()["messages"]
         assert [m["role"] for m in messages] == ["user", "assistant"]
@@ -149,14 +149,14 @@ def test_send_message_persists_conversation_and_calls_the_selected_provider(monk
     with test_session() as db:
         stored = db.scalars(select(AssistantMessage)).all()
         assert len(stored) == 2
-        assert {row.provider for row in stored} == {"gemini"}
+        assert {row.provider for row in stored} == {"groq"}
 
 
 def test_provider_failure_does_not_persist_a_half_written_conversation(monkeypatch) -> None:
     client, test_session, user_id = assistant_client(monkeypatch)
 
     def failing_send(*args, **kwargs):
-        raise AssistantError("O Gemini não conseguiu responder. Tentem novamente em instantes.")
+        raise AssistantError("O Groq não conseguiu responder. Tentem novamente em instantes.")
 
     monkeypatch.setattr(assistant_routes, "send_chat_message", failing_send)
 
@@ -165,10 +165,10 @@ def test_provider_failure_does_not_persist_a_half_written_conversation(monkeypat
         page = client.get("/dashboard")
         response = client.post(
             "/api/assistant/messages",
-            data={"provider": "gemini", "content": "Olá", "csrf_token": csrf_from(page.text)},
+            data={"provider": "groq", "content": "Olá", "csrf_token": csrf_from(page.text)},
         )
         assert response.status_code == 502
-        assert "Gemini" in response.json()["message"]
+        assert "Groq" in response.json()["message"]
 
     with test_session() as db:
         assert db.scalars(select(AssistantMessage)).first() is None
@@ -190,6 +190,6 @@ def test_unknown_provider_and_missing_csrf_are_rejected(monkeypatch) -> None:
 
         no_csrf = client.post(
             "/api/assistant/messages",
-            data={"provider": "gemini", "content": "Olá"},
+            data={"provider": "groq", "content": "Olá"},
         )
         assert no_csrf.status_code == 403

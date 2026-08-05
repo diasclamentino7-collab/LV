@@ -4,7 +4,7 @@
   const dialog = document.querySelector("#assistant-drawer");
   if (!(dialog instanceof HTMLDialogElement)) return;
 
-  const PROVIDER = "gemini";
+  const PROVIDER = "groq";
 
   const panel = dialog.querySelector(".assistant-panel");
   const closeButton = dialog.querySelector("[data-assistant-close]");

@@ -1,4 +1,4 @@
-"""Database-backed API for the AI assistant drawer (Gemini's free tier)."""
+"""Database-backed API for the AI assistant drawer (Groq's free tier)."""
 
 from __future__ import annotations
 
@@ -56,13 +56,13 @@ def message_payload(message: AssistantMessage) -> dict[str, object]:
 
 
 def provider_credentials(settings: Settings) -> tuple[str, str]:
-    return settings.gemini_api_key, settings.gemini_model
+    return settings.groq_api_key, settings.groq_model
 
 
 @router.get("/messages")
 def recent_messages(
     request: Request,
-    provider: str = Query("gemini"),
+    provider: str = Query("groq"),
 ) -> JSONResponse:
     if provider not in PROVIDERS:
         return error_response("Assistente desconhecido.", 404)

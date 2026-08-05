@@ -9,7 +9,7 @@
   <section class="assistant-panel">
     <header class="assistant-heading">
       <div>
-        <p class="assistant-eyebrow">Assistente de planeamento · Gemini</p>
+        <p class="assistant-eyebrow">Assistente de planeamento · Groq</p>
         <h2 id="assistant-drawer-title">Assistente</h2>
         <p id="assistant-drawer-description">
           Perguntem sobre o vosso casamento; o assistente vê o orçamento, os convidados e as tarefas atuais.
@@ -32,7 +32,7 @@
 
       <form class="assistant-compose" data-assistant-compose aria-label="Enviar mensagem ao assistente">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="provider" value="gemini">
+        <input type="hidden" name="provider" value="groq">
         <label class="visually-hidden" for="assistant-input">Mensagem para o assistente</label>
         <textarea
           id="assistant-input"

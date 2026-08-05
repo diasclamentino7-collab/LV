@@ -26,5 +26,5 @@ services:
         value: backups
       - key: LV_DATABASE_URL
         sync: false
-      - key: LV_GEMINI_API_KEY
+      - key: LV_GROQ_API_KEY
         sync: false
