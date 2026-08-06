@@ -322,7 +322,6 @@
   border-radius: 14px;
   background: rgba(255, 249, 251, .96);
   box-shadow: 0 12px 32px rgba(77, 52, 61, .12);
-  backdrop-filter: blur(14px);
 }
 
 .guest-bulk-toolbar[hidden] {
@@ -473,9 +472,6 @@
 }
 
 .guest-sheet .guest-select-cell {
-  position: sticky;
-  z-index: 5;
-  left: 0;
   width: 42px;
   min-width: 42px;
   max-width: 42px;
@@ -485,40 +481,25 @@
 }
 
 .guest-sheet th.guest-select-cell {
-  z-index: 9;
   background: var(--guest-sheet-header);
 }
 
 .guest-sheet .guest-name-cell {
-  position: sticky;
-  z-index: 4;
-  left: 42px;
   width: 218px;
   min-width: 218px;
   max-width: 218px;
   background: var(--guest-frozen);
-  box-shadow: 7px 0 12px -12px rgba(55, 39, 45, .45);
 }
 
 .guest-sheet th.guest-name-cell {
-  z-index: 8;
   background: var(--guest-sheet-header);
 }
 
 .guest-sheet .guest-actions-cell {
-  position: sticky;
-  z-index: 4;
-  right: 0;
   width: 212px;
   min-width: 212px;
   max-width: 212px;
   background: var(--guest-frozen);
-  box-shadow: -7px 0 12px -12px rgba(55, 39, 45, .45);
-}
-
-.guest-sheet th:last-child {
-  z-index: 8;
-  right: 0;
 }
 
 .guest-sheet .guest-wide-cell {
