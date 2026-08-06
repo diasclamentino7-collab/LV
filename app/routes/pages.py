@@ -19,9 +19,11 @@ from app.db.session import SessionLocal
 from app.models.core import WorkspaceRecord
 from app.models.planning import BudgetCategory, Expense, Guest, LegalDocument, Payment, Task, Vendor
 from app.repositories.project_settings import get_project_settings
+from app.routes.web import localized_wedding_target
 from app.services.activity import record_activity
 from app.services.auth_session import authenticated_user
 from app.services.budget import budget_snapshot, serialize_budget_snapshot
+from app.services.checklist import checklist_snapshot
 from app.services.csrf import valid_csrf_token
 from app.services.guests import timestamp_matches
 from app.services.record_deletion import create_tombstone, is_tombstoned, not_tombstoned
@@ -527,6 +529,7 @@ def module_page(request: Request, slug: str, q: str = "", archived: bool = False
         records = db.scalars(module_query(spec, q, archived)).all()
         record_labels = {record.id: record_label(record) for record in records}
         budget_data = None
+        checklist_data = None
         if slug == "budget" and not archived:
             settings = get_project_settings(
                 db,
@@ -537,9 +540,22 @@ def module_page(request: Request, slug: str, q: str = "", archived: bool = False
                 settings.total_budget if settings is not None else "0",
                 search=q,
             )
+        elif slug == "checklist" and not archived:
+            settings = get_project_settings(db, user_id=logged_user_id(request))
+            wedding_target = localized_wedding_target(settings) if settings is not None else None
+            checklist_data = checklist_snapshot(
+                db,
+                wedding_date=wedding_target.date() if wedding_target else None,
+                search=q,
+            )
+            checklist_data["wedding_date"] = wedding_target
+            checklist_data["days_remaining"] = (
+                (wedding_target.date() - date.today()).days if wedding_target else None
+            )
+    templates_by_slug = {"budget": "budget.html", "checklist": "checklist.html"}
     return templates.TemplateResponse(
         request,
-        "budget.html" if slug == "budget" else "module_list.html",
+        templates_by_slug.get(slug, "module_list.html"),
         {
             "app_name": get_settings().app_name,
             "current_section": slug,
@@ -551,6 +567,7 @@ def module_page(request: Request, slug: str, q: str = "", archived: bool = False
             "error": request.query_params.get("error"),
             "show_archived": archived,
             "budget_data": budget_data,
+            "checklist_data": checklist_data,
         },
     )
 

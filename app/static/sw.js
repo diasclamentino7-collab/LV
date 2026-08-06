@@ -8,6 +8,7 @@ const ASSETS = [
   "/static/css/assistant-drawer.css",
   "/static/css/moodboard-motion.css",
   "/static/css/budget.css",
+  "/static/css/checklist.css",
   "/static/css/deletion.css",
   "/static/css/command-palette.css",
   "/static/css/guests.css",

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% from "_components.html" import permanent_delete_form %}
+{% block title %}Checklist · {{ display_app_name|default(app_name) }}{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/deletion.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/module-workspace.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/checklist.css') }}">
+{% endblock %}
+{% block content %}
+<section class="page-intro checklist-intro" data-motion-list>
+  <div>
+    <p class="eyebrow">A nossa jornada até ao dia</p>
+    <h1>Checklist{% if show_archived %} <span class="workspace-title-suffix">eliminados</span>{% endif %}</h1>
+    <p class="intro-copy">
+      {% if not show_archived and checklist_data %}
+        {% if checklist_data.days_remaining is not none %}Faltam <strong>{{ checklist_data.days_remaining }}</strong> dias · {% endif %}
+        Preparação concluída: <strong>{{ checklist_data.percent }}%</strong>
+      {% else %}
+        Tarefas, prioridades e responsáveis, organizados mês a mês até ao grande dia.
+      {% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="secondary-button" href="/exports/checklist.pdf?q={{ search|urlencode }}&archived={{ 'true' if show_archived else 'false' }}" download data-export>Exportar PDF</a>
+    <a class="secondary-button" href="/checklist?archived={{ 'false' if show_archived else 'true' }}">{{ 'Ver ativos' if show_archived else 'Ver eliminados' }}</a>
+    {% if not show_archived %}
+      <a class="primary-button" href="/checklist/new">+ Nova tarefa</a>
+    {% else %}
+      <a class="secondary-button" href="/deleted">Todos os eliminados</a>
+    {% endif %}
+  </div>
+</section>
+
+{% if message %}
+  <div class="success-banner">
+    {% if message == 'created' %}Tarefa criada com sucesso.
+    {% elif message == 'updated' %}Alterações guardadas.
+    {% elif message == 'restored' %}Tarefa recuperada com sucesso.
+    {% elif message == 'permanently_deleted' %}Tarefa removida definitivamente da interface. A cópia técnica continua preservada.
+    {% else %}Tarefa retirada da lista ativa. Os dados continuam preservados.
+    {% endif %}
+  </div>
+{% endif %}
+{% if error %}
+  <div class="form-error">
+    {% if error == 'confirmation' %}Confirmação inválida. Escreva APAGAR exatamente como indicado.
+    {% elif error == 'not_archived' %}Só é possível apagar definitivamente uma tarefa que já esteja nos eliminados.
+    {% elif error == 'conflict' %}Esta tarefa foi alterada por outra pessoa entretanto. Recarreguem antes de guardar de novo.
+    {% else %}A sessão de segurança expirou. Recarreguem a página antes de tentar novamente.
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if not show_archived %}
+<div class="checklist-workspace" data-motion-list>
+  <section class="card checklist-overview" data-motion-card>
+    <div class="checklist-overview-heading">
+      <div>
+        <p class="eyebrow">Progresso geral</p>
+        <h2>{{ checklist_data.completed }} de {{ checklist_data.total }} tarefas concluídas</h2>
+      </div>
+      <strong class="checklist-overview-percent" data-motion-number data-motion-value="{{ checklist_data.percent }}">{{ checklist_data.percent }}%</strong>
+    </div>
+    <div class="progress-track" role="progressbar" aria-label="Progresso geral da checklist" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ checklist_data.percent }}">
+      <span class="progress-fill pink" data-motion-progress data-motion-value="{{ checklist_data.percent }}" style="width: {{ checklist_data.percent }}%"></span>
+    </div>
+  </section>
+
+  <form class="search-bar checklist-search" method="get" action="/checklist">
+    <label class="sr-only" for="checklist-search-input">Pesquisar tarefas</label>
+    <input id="checklist-search-input" name="q" type="search" value="{{ search }}" maxlength="100" placeholder="Título, categoria ou responsável" autocomplete="off">
+    <button class="secondary-button">Pesquisar</button>
+    {% if search %}<a class="text-button" href="/checklist">Limpar</a>{% endif %}
+  </form>
+
+  {% if checklist_data.chapters %}
+  <div class="checklist-chapters">
+    {% for chapter in checklist_data.chapters %}
+    <section class="checklist-chapter{% if chapter.is_milestone %} is-milestone{% endif %}" data-motion-card>
+      <header class="checklist-chapter-header">
+        <div>
+          <p class="eyebrow">{{ '💍 Marco' if chapter.is_milestone else 'Capítulo' }}</p>
+          <h2>{{ chapter.title }}</h2>
+          {% if chapter.subtitle %}<p>{{ chapter.subtitle }}</p>{% endif %}
+        </div>
+        <div class="checklist-chapter-progress">
+          <strong>{{ chapter.percent }}%</strong>
+          <span>{{ chapter.completed }} de {{ chapter.total }}</span>
+        </div>
+      </header>
+      <div class="progress-track">
+        <span class="progress-fill pink" data-motion-progress data-motion-value="{{ chapter.percent }}" style="width: {{ chapter.percent }}%"></span>
+      </div>
+      {% for category in chapter.categories %}
+      <div class="checklist-category">
+        <h3>{{ category.name }}</h3>
+        <ul class="checklist-task-list">
+          {% for task in category.tasks %}
+          <li class="checklist-task{% if task.status == 'Concluído' %} is-done{% endif %}">
+            <a class="checklist-task-title" href="/checklist/{{ task.id }}/edit">{{ task.title }}</a>
+            <div class="checklist-task-meta">
+              <span class="checklist-priority" data-priority="{{ task.priority|lower }}">{{ task.priority }}</span>
+              <span class="module-status" data-status="{{ task.status|lower }}">{{ task.status }}</span>
+              {% if task.assignee %}<span class="checklist-assignee">{{ task.assignee }}</span>{% endif %}
+            </div>
+            <div class="record-actions checklist-task-actions">
+              <a class="module-edit-button" href="/checklist/{{ task.id }}/edit">Editar</a>
+              <form method="post" action="/checklist/{{ task.id }}/archive" onsubmit="return confirm('Eliminar esta tarefa da lista? Os dados serão preservados e poderão ser recuperados.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="module-archive-button" type="submit">Eliminar</button>
+              </form>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-icon">✦</span>
+    <h3>{{ 'Nenhuma tarefa corresponde à pesquisa.' if search else 'Ainda não há tarefas.' }}</h3>
+    <p>{{ 'Limpem a pesquisa para voltar à lista completa.' if search else 'Criem a primeira tarefa; ela aparece imediatamente organizada por mês.' }}</p>
+    {% if not search %}<a class="primary-button" href="/checklist/new">Criar primeira tarefa</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<section class="card module-records">
+  {% if records %}
+  <div class="record-list">
+    {% for record in records %}
+    <article class="record-row">
+      <div>
+        <h2>{{ record_labels[record.id] }}</h2>
+        <p>{{ record.category or 'Sem categoria' }} · {{ record.priority }} · atualizado em {{ record.updated_at.strftime('%d/%m/%Y %H:%M') if record.updated_at else '—' }}</p>
+      </div>
+      <div class="record-actions">
+        <form method="post" action="/checklist/{{ record.id }}/restore">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button>Recuperar</button>
+        </form>
+        {{ permanent_delete_form('checklist', record.id, csrf_token) }}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-icon">✦</span>
+    <h3>Não há tarefas eliminadas.</h3>
+    <p>Quando retirarem uma tarefa, ela ficará preservada aqui para possível recuperação.</p>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}
