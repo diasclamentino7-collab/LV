@@ -401,6 +401,15 @@
       existing.set(row.dataset.guestId, row);
     });
     var incoming = new Set();
+    // Every poll (every ~18s while the tab is open) used to unconditionally
+    // rewrite every field of every row and re-append every row to the DOM,
+    // even when nothing had changed since the last poll — with a realistic
+    // guest list that's hundreds of querySelector calls plus a full table
+    // reflow, repeating on a timer, which is exactly the kind of periodic
+    // jank that can make a mobile page appear to freeze/go blank. Skipping
+    // both the field sync and the reposition when they're already correct
+    // makes the common "nothing changed" poll nearly free.
+    var previousRow = null;
 
     payload.items.forEach(function (guest) {
       var guestId = String(guest.id);
@@ -408,11 +417,17 @@
       var row = existing.get(guestId);
       if (!row) {
         row = createRow(guest);
-      } else {
+      } else if (row.dataset.updatedAt !== String(guest.updated_at || "")) {
         populateRow(row, guest, false);
       }
       if (row && !rowIsProtected(row)) {
-        rowsContainer.appendChild(row);
+        var expectedNext = previousRow
+          ? previousRow.nextElementSibling
+          : rowsContainer.firstElementChild;
+        if (expectedNext !== row) {
+          rowsContainer.insertBefore(row, expectedNext);
+        }
+        previousRow = row;
       }
     });
 
