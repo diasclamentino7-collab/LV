@@ -830,6 +830,9 @@ def default_checklist_tasks(wedding_date: date) -> list[dict[str, str | date]]:
     return tasks
 
 
+MIN_REMINDER_DAYS_FOR_LONG_RANGE_PLAN = 45
+
+
 def import_default_checklist(db: Session, current_user: User | None) -> int:
     """Insert the seed checklist into ``db``, skipping anything already there.
 
@@ -838,6 +841,13 @@ def import_default_checklist(db: Session, current_user: User | None) -> int:
     sets the wedding date in the project settings if it isn't configured
     yet, since the whole plan — and the checklist page's milestone chapter
     — is built around it.
+
+    The dashboard's "Próximas tarefas" panel only shows tasks due within
+    ``reminder_days_before`` days (7 by default) when ``reminders_enabled``
+    is on. A 13-month plan's nearest tasks are routinely 20-30 days out, so
+    that default silently hid every imported task from the panel. Widen it
+    here (only if it's still at or below the default) rather than requiring
+    a manual trip to Settings before the import is actually useful.
     """
 
     settings = db.scalar(select(ProjectSettings))
@@ -846,6 +856,8 @@ def import_default_checklist(db: Session, current_user: User | None) -> int:
         db.add(settings)
     if settings.wedding_date is None:
         settings.wedding_date = DEFAULT_WEDDING_DATE
+    if settings.reminder_days_before is None or settings.reminder_days_before <= 7:
+        settings.reminder_days_before = MIN_REMINDER_DAYS_FOR_LONG_RANGE_PLAN
 
     existing = {(t.title, t.category, t.due_date) for t in db.scalars(select(Task)).all()}
     seed = default_checklist_tasks(DEFAULT_WEDDING_DATE.date())

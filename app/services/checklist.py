@@ -130,6 +130,18 @@ def checklist_snapshot(
             _build_chapter("Sem mês definido", "Tarefas sem data associada", unscheduled)
         )
 
+    # Expand only the chapter that most needs attention (the first one not
+    # fully done) by default; a long plan otherwise renders every task open
+    # at once, which is both overwhelming and — with hundreds of tasks —
+    # slow to paint.
+    first_incomplete = next((c for c in chapters if c["percent"] < 100), None)
+    opened = False
+    for chapter in chapters:
+        chapter["is_open"] = chapter is first_incomplete
+        opened = opened or chapter["is_open"]
+    if not opened and chapters:
+        chapters[-1]["is_open"] = True
+
     total, completed, percent = _chapter_progress(list(tasks))
     return {
         "chapters": chapters,

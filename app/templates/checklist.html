@@ -81,8 +81,8 @@
   {% if checklist_data.chapters %}
   <div class="checklist-chapters">
     {% for chapter in checklist_data.chapters %}
-    <section class="checklist-chapter{% if chapter.is_milestone %} is-milestone{% endif %}" data-motion-card>
-      <header class="checklist-chapter-header">
+    <details class="checklist-chapter{% if chapter.is_milestone %} is-milestone{% endif %}" data-motion-card {% if chapter.is_open %}open{% endif %}>
+      <summary class="checklist-chapter-header">
         <div>
           <p class="eyebrow">{{ '💍 Marco' if chapter.is_milestone else 'Capítulo' }}</p>
           <h2>{{ chapter.title }}</h2>
@@ -92,7 +92,7 @@
           <strong>{{ chapter.percent }}%</strong>
           <span>{{ chapter.completed }} de {{ chapter.total }}</span>
         </div>
-      </header>
+      </summary>
       <div class="progress-track">
         <span class="progress-fill pink" data-motion-progress data-motion-value="{{ chapter.percent }}" style="width: {{ chapter.percent }}%"></span>
       </div>
@@ -120,7 +120,7 @@
         </ul>
       </div>
       {% endfor %}
-    </section>
+    </details>
     {% endfor %}
   </div>
   {% else %}

@@ -325,6 +325,10 @@ def test_import_default_checklist_button_populates_an_empty_checklist(monkeypatc
         assert db.scalar(select(func.count(Task.id))) == 419
         settings = db.scalar(select(ProjectSettings))
         assert settings.wedding_date is not None
+        # Regression: creating ProjectSettings() fresh leaves
+        # reminder_days_before as None until flushed, which crashed the
+        # "<= 7" widening check with a TypeError before this was fixed.
+        assert settings.reminder_days_before == 45
 
 
 def test_checklist_header_offers_the_import_button_even_with_existing_tasks(

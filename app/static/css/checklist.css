@@ -74,7 +74,21 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
+  list-style: none;
+  cursor: pointer;
 }
+.checklist-chapter-header::-webkit-details-marker { display: none; }
+.checklist-chapter-header::marker { content: ""; }
+.checklist-chapter-header::after {
+  align-self: center;
+  margin-left: 4px;
+  color: var(--muted, #847b7c);
+  font-size: 11px;
+  content: "▾";
+  transform: rotate(-90deg);
+  transition: transform .15s ease;
+}
+.checklist-chapter[open] > .checklist-chapter-header::after { transform: rotate(0deg); }
 .checklist-chapter-header h2 { margin: 2px 0 4px; font-size: 15px; }
 .checklist-chapter-header p { margin: 0; color: var(--muted, #847b7c); font-size: 11px; }
 
