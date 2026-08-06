@@ -392,7 +392,7 @@
     }
   }
 
-  function reconcile(payload) {
+  function reconcile(payload, reason) {
     if (!payload || !Array.isArray(payload.items)) {
       throw new Error("Invalid guests payload");
     }
@@ -400,6 +400,22 @@
     currentRows().forEach(function (row) {
       existing.set(row.dataset.guestId, row);
     });
+
+    // A background poll must never be the thing that empties a table that
+    // clearly had real guests in it — only an explicit search/filter (or a
+    // genuinely empty guest list) should ever do that. If a poll response
+    // comes back with zero items while dozens of rows are on screen, that
+    // is far more likely a transient server/auth/network hiccup than every
+    // guest having vanished, and wiping the table on that basis is exactly
+    // the "page goes blank and stays blank" failure this guards against.
+    // Throwing (rather than just returning) routes this through the same
+    // "Sem ligação" handling refreshGuests already uses for real network
+    // errors, instead of falling through to the "synced" message right
+    // after this call.
+    if (reason === "poll" && payload.items.length === 0 && existing.size > 0) {
+      throw new Error("Suspicious empty poll response ignored");
+    }
+
     var incoming = new Set();
     // Every poll (every ~18s while the tab is open) used to unconditionally
     // rewrite every field of every row and re-append every row to the DOM,
@@ -513,7 +529,7 @@
       var payload = await jsonRequest(filterEndpoint(), {
         signal: controller.signal,
       });
-      reconcile(payload);
+      reconcile(payload, reason);
       setLiveState("Dados sincronizados", "ready");
     } catch (error) {
       if (error.name !== "AbortError") {
