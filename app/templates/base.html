@@ -12,6 +12,56 @@
     <link rel="apple-touch-icon" href="/static/icons/icon.svg">
     <script>
       (() => {
+        "use strict";
+        // Temporary diagnostic aid: a page going silently blank with no
+        // visible error is much harder to debug remotely than one that
+        // says what broke. Runs before any other script (including
+        // motion.js) so it also catches errors that happen there. Shows a
+        // small dismissible banner instead of failing invisibly.
+        const showRuntimeErrorBanner = message => {
+          try {
+            let banner = document.querySelector("[data-runtime-error-banner]");
+            if (!banner) {
+              banner = document.createElement("div");
+              banner.setAttribute("data-runtime-error-banner", "");
+              banner.style.cssText = [
+                "position:fixed", "left:10px", "right:10px", "top:10px", "z-index:99999",
+                "background:#a03e4a", "color:#fff", "font:12px/1.4 sans-serif",
+                "padding:10px 14px", "border-radius:10px",
+                "box-shadow:0 8px 24px rgba(0,0,0,.25)", "white-space:pre-wrap",
+              ].join(";");
+              const closeButton = document.createElement("button");
+              closeButton.textContent = "Fechar";
+              closeButton.style.cssText = "margin-left:10px;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.6);border-radius:6px;padding:2px 8px;";
+              closeButton.addEventListener("click", () => banner.remove());
+              const text = document.createElement("div");
+              text.setAttribute("data-runtime-error-text", "");
+              banner.appendChild(text);
+              banner.appendChild(closeButton);
+              (document.body || document.documentElement).appendChild(banner);
+            }
+            const textNode = banner.querySelector("[data-runtime-error-text]");
+            const existing = textNode.textContent ? textNode.textContent + "\n---\n" : "";
+            textNode.textContent = existing + message;
+          } catch (_bannerError) {
+            // If even the banner fails, there is nothing left to do client-side.
+          }
+        };
+        window.addEventListener("error", event => {
+          const detail = event.error && event.error.stack
+            ? event.error.stack
+            : (event.message || "Erro desconhecido") + " (" + event.filename + ":" + event.lineno + ")";
+          showRuntimeErrorBanner("Erro de JavaScript: " + detail);
+        });
+        window.addEventListener("unhandledrejection", event => {
+          const reason = event.reason;
+          const detail = reason && reason.stack ? reason.stack : String(reason);
+          showRuntimeErrorBanner("Promessa rejeitada: " + detail);
+        });
+      })();
+    </script>
+    <script>
+      (() => {
         try {
           const storedRoute = sessionStorage.getItem("lv-route-transition");
           if (!storedRoute) return;
