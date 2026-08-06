@@ -11,7 +11,17 @@ into chapters purely from ``due_date`` with no extra schema needed.
 from __future__ import annotations
 
 import calendar
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models.core import ProjectSettings, User
+from app.models.planning import Task
+from app.services.activity import record_activity
+
+DEFAULT_WEDDING_DATE = datetime(2027, 9, 4, 10, 0, tzinfo=ZoneInfo("Europe/Lisbon"))
 
 
 def _month_end(year: int, month: int) -> date:
@@ -818,3 +828,54 @@ def default_checklist_tasks(wedding_date: date) -> list[dict[str, str | date]]:
     )
 
     return tasks
+
+
+def import_default_checklist(db: Session, current_user: User | None) -> int:
+    """Insert the seed checklist into ``db``, skipping anything already there.
+
+    Safe to call more than once (e.g. clicking the button twice): tasks are
+    matched on (title, category, due_date), so nothing is duplicated. Also
+    sets the wedding date in the project settings if it isn't configured
+    yet, since the whole plan — and the checklist page's milestone chapter
+    — is built around it.
+    """
+
+    settings = db.scalar(select(ProjectSettings))
+    if settings is None:
+        settings = ProjectSettings()
+        db.add(settings)
+    if settings.wedding_date is None:
+        settings.wedding_date = DEFAULT_WEDDING_DATE
+
+    existing = {(t.title, t.category, t.due_date) for t in db.scalars(select(Task)).all()}
+    seed = default_checklist_tasks(DEFAULT_WEDDING_DATE.date())
+    user_id = current_user.id if current_user else None
+
+    created = 0
+    for item in seed:
+        key = (item["title"], item["category"], item["due_date"])
+        if key in existing:
+            continue
+        db.add(
+            Task(
+                title=item["title"],
+                category=item["category"],
+                priority=item["priority"],
+                due_date=item["due_date"],
+                status="Pendente",
+                created_by_id=user_id,
+                updated_by_id=user_id,
+            )
+        )
+        created += 1
+
+    if created:
+        record_activity(
+            db,
+            user_id,
+            "criou",
+            f"importou a checklist completa do casamento ({created} tarefas)",
+            "checklist",
+        )
+    db.commit()
+    return created

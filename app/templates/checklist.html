@@ -37,6 +37,7 @@
     {% elif message == 'updated' %}Alterações guardadas.
     {% elif message == 'restored' %}Tarefa recuperada com sucesso.
     {% elif message == 'permanently_deleted' %}Tarefa removida definitivamente da interface. A cópia técnica continua preservada.
+    {% elif message == 'imported' %}Plano importado com sucesso.
     {% else %}Tarefa retirada da lista ativa. Os dados continuam preservados.
     {% endif %}
   </div>
@@ -123,7 +124,13 @@
     <span class="empty-icon">✦</span>
     <h3>{{ 'Nenhuma tarefa corresponde à pesquisa.' if search else 'Ainda não há tarefas.' }}</h3>
     <p>{{ 'Limpem a pesquisa para voltar à lista completa.' if search else 'Criem a primeira tarefa; ela aparece imediatamente organizada por mês.' }}</p>
-    {% if not search %}<a class="primary-button" href="/checklist/new">Criar primeira tarefa</a>{% endif %}
+    {% if not search %}
+    <a class="primary-button" href="/checklist/new">Criar primeira tarefa</a>
+    <form method="post" action="/checklist/import-default" class="checklist-import-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="secondary-button" type="submit">Importar o plano completo (419 tarefas)</button>
+    </form>
+    {% endif %}
   </div>
   {% endif %}
 </div>

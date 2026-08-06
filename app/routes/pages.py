@@ -24,6 +24,7 @@ from app.services.activity import record_activity
 from app.services.auth_session import authenticated_user
 from app.services.budget import budget_snapshot, serialize_budget_snapshot
 from app.services.checklist import checklist_snapshot
+from app.services.checklist_seed import import_default_checklist
 from app.services.csrf import valid_csrf_token
 from app.services.guests import timestamp_matches
 from app.services.record_deletion import create_tombstone, is_tombstoned, not_tombstoned
@@ -570,6 +571,27 @@ def module_page(request: Request, slug: str, q: str = "", archived: bool = False
             "checklist_data": checklist_data,
         },
     )
+
+
+@router.post("/checklist/import-default", include_in_schema=False)
+def import_default_checklist_route(
+    request: Request, csrf_token: str = Form("")
+) -> RedirectResponse:
+    """Load the couple's seed checklist into whichever database this deployment uses.
+
+    Triggered by a button on the checklist page (only shown while it's
+    empty) instead of a script, so it always writes to the same database
+    the person clicking it is actually looking at — including production.
+    """
+
+    if redirect := require_login(request):
+        return redirect
+    if not valid_csrf_token(request, csrf_token):
+        return RedirectResponse("/checklist?error=csrf", status_code=303)
+    with SessionLocal() as db:
+        user = authenticated_user(db, request)
+        import_default_checklist(db, user)
+    return RedirectResponse("/checklist?message=imported", status_code=303)
 
 
 @router.get("/{slug}/new", response_class=HTMLResponse, include_in_schema=False)

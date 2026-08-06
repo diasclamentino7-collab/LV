@@ -4,7 +4,7 @@ import re
 from datetime import UTC, date, datetime
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -257,3 +257,71 @@ def test_checklist_page_renders_chapters_and_archived_view(monkeypatch) -> None:
     with Session(engine) as db:
         task = db.get(Task, 1)
         assert task.is_archived is True
+
+
+def test_import_default_checklist_button_populates_an_empty_checklist(monkeypatch) -> None:
+    """This is the fix for tasks only landing in the local dev database.
+
+    The button posts to a route that writes through the request's own
+    ``SessionLocal``, so on a real deployment it always reaches whichever
+    database that deployment is actually configured with (e.g. production
+    Postgres), unlike running the standalone script against a developer's
+    local ``.env``.
+    """
+
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    test_session = sessionmaker(bind=engine, expire_on_commit=False)
+    monkeypatch.setattr(page_routes, "SessionLocal", test_session)
+    monkeypatch.setattr(auth_routes, "SessionLocal", test_session)
+    monkeypatch.setattr(templating_module, "SessionLocal", test_session)
+
+    with Session(engine) as db:
+        user = User(name="Vítor", password_hash=hash_password("password123"))
+        db.add(user)
+        db.commit()
+        user_id = user.id
+
+    with TestClient(app) as client:
+        login_page = client.get("/login")
+        client.post(
+            "/login",
+            data={
+                "user_id": user_id,
+                "password": "password123",
+                "csrf_token": csrf_from(login_page),
+            },
+            follow_redirects=False,
+        )
+
+        empty_page = client.get("/checklist")
+        assert "Importar o plano completo" in empty_page.text
+
+        imported = client.post(
+            "/checklist/import-default",
+            data={"csrf_token": csrf_from(empty_page)},
+            follow_redirects=False,
+        )
+        assert imported.status_code == 303
+        assert imported.headers["location"] == "/checklist?message=imported"
+
+        filled_page = client.get(imported.headers["location"])
+        assert "Agosto de 2026" in filled_page.text
+        assert "Plano importado com sucesso" in filled_page.text
+        assert "Importar o plano completo" not in filled_page.text
+
+        # Clicking it again must not duplicate anything.
+        client.post(
+            "/checklist/import-default",
+            data={"csrf_token": csrf_from(filled_page)},
+            follow_redirects=False,
+        )
+
+    with Session(engine) as db:
+        assert db.scalar(select(func.count(Task.id))) == 419
+        settings = db.scalar(select(ProjectSettings))
+        assert settings.wedding_date is not None

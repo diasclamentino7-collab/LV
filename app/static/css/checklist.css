@@ -1,5 +1,10 @@
 .checklist-intro { align-items: end; }
 
+.checklist-import-form {
+  display: inline-block;
+  margin: 10px 0 0 10px;
+}
+
 .checklist-workspace {
   display: grid;
   gap: 18px;
