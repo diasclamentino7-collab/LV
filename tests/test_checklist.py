@@ -325,3 +325,60 @@ def test_import_default_checklist_button_populates_an_empty_checklist(monkeypatc
         assert db.scalar(select(func.count(Task.id))) == 419
         settings = db.scalar(select(ProjectSettings))
         assert settings.wedding_date is not None
+
+
+def test_dashboard_also_offers_the_import_button_when_the_checklist_is_empty(
+    monkeypatch,
+) -> None:
+    """The couple reported seeing nothing about importing on the dashboard.
+
+    "Próximas tarefas" only lists tasks due soon, so an empty checklist
+    (zero tasks anywhere, not just none due soon) looked identical to an
+    empty *upcoming* list, with no hint that an import was possible.
+    """
+
+    import app.routes.web as web_routes
+
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    test_session = sessionmaker(bind=engine, expire_on_commit=False)
+    monkeypatch.setattr(page_routes, "SessionLocal", test_session)
+    monkeypatch.setattr(web_routes, "SessionLocal", test_session)
+    monkeypatch.setattr(auth_routes, "SessionLocal", test_session)
+    monkeypatch.setattr(templating_module, "SessionLocal", test_session)
+
+    with Session(engine) as db:
+        user = User(name="Vítor", password_hash=hash_password("password123"))
+        db.add(user)
+        db.commit()
+        user_id = user.id
+
+    with TestClient(app) as client:
+        login_page = client.get("/login")
+        client.post(
+            "/login",
+            data={
+                "user_id": user_id,
+                "password": "password123",
+                "csrf_token": csrf_from(login_page),
+            },
+            follow_redirects=False,
+        )
+
+        dashboard = client.get("/dashboard")
+        assert dashboard.status_code == 200
+        assert "checklist ainda está vazia" in dashboard.text
+        assert "Importar o plano completo" in dashboard.text
+
+        client.post(
+            "/checklist/import-default",
+            data={"csrf_token": csrf_from(dashboard)},
+            follow_redirects=False,
+        )
+
+        filled_dashboard = client.get("/dashboard")
+        assert "Importar o plano completo" not in filled_dashboard.text

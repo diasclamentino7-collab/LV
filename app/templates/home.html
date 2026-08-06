@@ -6,6 +6,7 @@
 {% block title %}Visão geral · {{ display_app_name|default(app_name) }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/checklist.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -99,6 +100,17 @@
           <a class="metric-arrow" href="/payments/{{ payment.id }}/edit" aria-label="Editar pagamento">↗</a>
         </article>
         {% endfor %}
+      </div>
+      {% elif stats.tasks == 0 %}
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">✓</span>
+        <h3>A checklist ainda está vazia.</h3>
+        <p>Podem começar do zero ou importar o plano completo de 419 tarefas já organizado por mês.</p>
+        <a class="text-button" href="/checklist/new">Adicionar tarefa <span aria-hidden="true">→</span></a>
+        <form method="post" action="/checklist/import-default" class="checklist-import-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="secondary-button" type="submit">Importar o plano completo (419 tarefas)</button>
+        </form>
       </div>
       {% else %}
       <div class="empty-state"><span class="empty-icon" aria-hidden="true">✓</span><h3>Nada urgente por agora.</h3><p>As tarefas e pagamentos com data próxima vão aparecer aqui automaticamente.</p><a class="text-button" href="/checklist/new">Adicionar tarefa <span aria-hidden="true">→</span></a></div>
