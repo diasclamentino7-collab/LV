@@ -552,18 +552,26 @@
     elementsWithin(scope, AUTO.lists).forEach(function (element) {
       element.classList.add("motion-list");
     });
-    elementsWithin(scope, AUTO.tilt).forEach(function (element) {
-      element.classList.add("motion-tilt");
-    });
+    if (tiltAllowed()) {
+      // Touch devices (or reduced/no-motion preference) never render tilt;
+      // skip even applying the 3D-transform class (perspective/preserve-3d
+      // forces its own compositor layer per element, which is real
+      // GPU/memory cost on weaker phones for no visible benefit there).
+      elementsWithin(scope, AUTO.tilt).forEach(function (element) {
+        element.classList.add("motion-tilt");
+      });
+    }
     elementsWithin(scope, AUTO.buttons).forEach(function (element) {
       element.classList.add("motion-button");
     });
-    elementsWithin(scope, AUTO.parallax).forEach(function (element) {
-      element.classList.add("motion-parallax");
-      if (!element.hasAttribute("data-motion-range")) {
-        element.setAttribute("data-motion-range", "7");
-      }
-    });
+    if (parallaxAllowed()) {
+      elementsWithin(scope, AUTO.parallax).forEach(function (element) {
+        element.classList.add("motion-parallax");
+        if (!element.hasAttribute("data-motion-range")) {
+          element.setAttribute("data-motion-range", "7");
+        }
+      });
+    }
 
     elementsWithin(scope, ".moodboard-item img").forEach(function (image) {
       if (!image.hasAttribute("loading")) {
@@ -1078,7 +1086,10 @@
   }
 
   function prepareTilt(element) {
-    if (state.tiltStates.has(element)) {
+    if (state.tiltStates.has(element) || !tiltAllowed()) {
+      // Touch devices (and reduced/no-motion preference) never render
+      // tilt; skip the 3D transform + listeners entirely instead of
+      // setting them up and immediately no-op'ing every frame.
       return;
     }
     element.classList.add("motion-tilt");
@@ -1202,6 +1213,14 @@
     var lowMemory =
       Number.isFinite(navigator.deviceMemory) && navigator.deviceMemory <= 4;
     return saveData || fewCores || lowMemory || coarsePointerQuery.matches;
+  }
+
+  function tiltAllowed() {
+    return state.effectiveMode === "full" && finePointerQuery.matches;
+  }
+
+  function parallaxAllowed() {
+    return state.effectiveMode === "full" && !lowPerformanceDevice();
   }
 
   function prepareParallax(element) {
@@ -1576,8 +1595,12 @@
     elementsWithin(container, SELECTORS.list).forEach(prepareList);
     elementsWithin(container, SELECTORS.number).forEach(prepareNumber);
     elementsWithin(container, SELECTORS.progress).forEach(prepareProgress);
-    elementsWithin(container, SELECTORS.tilt).forEach(prepareTilt);
-    elementsWithin(container, SELECTORS.parallax).forEach(prepareParallax);
+    if (tiltAllowed()) {
+      elementsWithin(container, SELECTORS.tilt).forEach(prepareTilt);
+    }
+    if (parallaxAllowed()) {
+      elementsWithin(container, SELECTORS.parallax).forEach(prepareParallax);
+    }
     elementsWithin(container, SELECTORS.modal).forEach(prepareModal);
     elementsWithin(container, SELECTORS.button).forEach(function (element) {
       element.classList.add("motion-button");
