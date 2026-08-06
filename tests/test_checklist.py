@@ -327,6 +327,78 @@ def test_import_default_checklist_button_populates_an_empty_checklist(monkeypatc
         assert settings.wedding_date is not None
 
 
+def test_checklist_header_offers_the_import_button_even_with_existing_tasks(
+    monkeypatch,
+) -> None:
+    """The couple already had two unrelated tasks, so the empty-state import
+
+    prompt never showed — the list wasn't empty, just not the full plan.
+    A persistent header button, not an empty-state-only one, is the fix.
+    """
+
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    test_session = sessionmaker(bind=engine, expire_on_commit=False)
+    monkeypatch.setattr(page_routes, "SessionLocal", test_session)
+    monkeypatch.setattr(auth_routes, "SessionLocal", test_session)
+    monkeypatch.setattr(templating_module, "SessionLocal", test_session)
+
+    with Session(engine) as db:
+        user = User(name="Vítor", password_hash=hash_password("password123"))
+        db.add(user)
+        db.flush()
+        db.add(
+            Task(
+                title="Definir Convidados",
+                category="Geral",
+                priority="Alta",
+                status="Em curso",
+                created_by_id=user.id,
+                updated_by_id=user.id,
+            )
+        )
+        db.commit()
+        user_id = user.id
+
+    with TestClient(app) as client:
+        login_page = client.get("/login")
+        client.post(
+            "/login",
+            data={
+                "user_id": user_id,
+                "password": "password123",
+                "csrf_token": csrf_from(login_page),
+            },
+            follow_redirects=False,
+        )
+
+        page = client.get("/checklist")
+        assert page.status_code == 200
+        assert "Definir Convidados" in page.text
+        assert "Importar plano completo (419)" in page.text
+
+        imported = client.post(
+            "/checklist/import-default",
+            data={"csrf_token": csrf_from(page)},
+            follow_redirects=False,
+        )
+        assert imported.status_code == 303
+
+        after_page = client.get("/checklist")
+        assert "Importar plano completo (419)" in after_page.text  # still there, re-clickable
+
+    with Session(engine) as db:
+        # The pre-existing task survives untouched; the seed adds on top of it.
+        assert db.scalar(select(func.count(Task.id))) == 420
+        assert (
+            db.scalar(select(Task).where(Task.title == "Definir Convidados")).status == "Em curso"
+        )
+
+
 def test_dashboard_also_offers_the_import_button_when_the_checklist_is_empty(
     monkeypatch,
 ) -> None:

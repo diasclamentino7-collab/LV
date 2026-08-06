@@ -24,6 +24,10 @@
     <a class="secondary-button" href="/exports/checklist.pdf?q={{ search|urlencode }}&archived={{ 'true' if show_archived else 'false' }}" download data-export>Exportar PDF</a>
     <a class="secondary-button" href="/checklist?archived={{ 'false' if show_archived else 'true' }}">{{ 'Ver ativos' if show_archived else 'Ver eliminados' }}</a>
     {% if not show_archived %}
+      <form method="post" action="/checklist/import-default" class="checklist-import-form-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="secondary-button" type="submit">Importar plano completo (419)</button>
+      </form>
       <a class="primary-button" href="/checklist/new">+ Nova tarefa</a>
     {% else %}
       <a class="secondary-button" href="/deleted">Todos os eliminados</a>

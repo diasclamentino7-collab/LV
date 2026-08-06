@@ -5,6 +5,8 @@
   margin: 10px 0 0 10px;
 }
 
+.checklist-import-form-inline { margin: 0; }
+
 .checklist-workspace {
   display: grid;
   gap: 18px;
